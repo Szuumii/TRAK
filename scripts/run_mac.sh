@@ -1,4 +1,3 @@
-
 # takes an argument for compilation
 
 # Exits and displays error if there is no argument provided
@@ -14,6 +13,4 @@ if test -f "$FILE"; then
 	mv a.out .a.out
 fi
 
-clang -Wall -framework OpenGL $1 ./libs/GLFW/MacOS/libglfw.3.3.dylib ./libs/glad/glad.c
-
-./a.out
+clang++ -std=c++17 -fdiagnostics-color=always -Wall -g -I./libs -L./libs/glad ./libs/GLFW/MacOS/libglfw.3.3.dylib $1 ./libs/glad/glad.c -o ./app.out -framework OpenGL -framework Cocoa -framework IOKit -framework CoreVideo -framework CoreFoundation -Wno-deprecated

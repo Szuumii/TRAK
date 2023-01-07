@@ -15,7 +15,6 @@ app*
 
 # Compiled Dynamic libraries
 *.so
-*.dylib
 *.dll
 
 # Fortran module files
@@ -32,3 +31,6 @@ app*
 *.exe
 *.out
 *.app
+
+# mac os metadata files
+*.DS_Store

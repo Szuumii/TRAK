@@ -34,3 +34,5 @@ app*
 
 # mac os metadata files
 *.DS_Store
+
+.vscode

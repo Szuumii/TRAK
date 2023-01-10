@@ -10,6 +10,7 @@
 
 #include "./shaders/shader.cpp"
 #include "camera.h"
+#include "model.h"
 
 #include <iostream>
 
@@ -207,6 +208,10 @@ int main()
     ourShader.setInt("texture1", 0);
     ourShader.setInt("texture2", 1);
 
+    // load models
+    // -----------
+    Model ourModel(std::filesystem::path("/Users/radziminski/Documents/repos/TRAK/src/assets/models/tree.obj"));
+
     // render loop
     // -----------
     while (!glfwWindowShouldClose(window))
@@ -243,10 +248,16 @@ int main()
         glm::mat4 view = camera.GetViewMatrix();
         ourShader.setMat4("view", view);
 
+        glm::mat4 ourModelMat = glm::mat4(1.0f);
+        ourModelMat = glm::scale(ourModelMat, glm::vec3(0.05f, 0.05f, 0.05f));
+        ourShader.setMat4("model", ourModelMat);
+        ourModel.Draw(ourShader);
+
         // render boxes
         glBindVertexArray(VAO);
         for (unsigned int i = 0; i < 10; i++)
         {
+
             // calculate the model matrix for each object and pass it to shader before drawing
             glm::mat4 model = glm::mat4(1.0f); // make sure to initialize matrix to identity matrix first
             model = glm::translate(model, cubePositions[i]);

@@ -1,5 +1,13 @@
 {
   "files.associations": {
+    "*.json.liquid": "json",
+    "*.yaml.liquid": "yaml",
+    "*.md.liquid": "markdown",
+    "*.js.liquid": "liquid-javascript",
+    "*.css.liquid": "liquid-css",
+    "*.scss.liquid": "liquid-scss",
+    "*.tsx": "typescriptreact",
+    "*.ts": "typescript",
     "__bit_reference": "cpp",
     "__bits": "cpp",
     "__config": "cpp",
@@ -63,6 +71,10 @@
     "unordered_map": "cpp",
     "variant": "cpp",
     "vector": "cpp",
-    "algorithm": "cpp"
+    "algorithm": "cpp",
+    "__tree": "cpp",
+    "list": "cpp",
+    "map": "cpp",
+    "set": "cpp"
   }
 }

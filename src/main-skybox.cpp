@@ -10,12 +10,15 @@
 
 #include "./shaders/shader.cpp"
 #include "camera.h"
+#include "model.h"
 
 #include <iostream>
 
-void framebuffer_size_callback(GLFWwindow* window, int width, int height);
-void mouse_callback(GLFWwindow* window, double xpos, double ypos);
-void scroll_callback(GLFWwindow* window, double xoffset, double yoffset);
+const std::string PROJECT_ROOT = "/Users/radziminski/Documents/repos/TRAK/src";
+
+void framebuffer_size_callback(GLFWwindow *window, int width, int height);
+void mouse_callback(GLFWwindow *window, double xpos, double ypos);
+void scroll_callback(GLFWwindow *window, double xoffset, double yoffset);
 void processInput(GLFWwindow *window);
 unsigned int loadTexture(const char *path);
 unsigned int loadCubemap(std::vector<std::string> faces);
@@ -25,13 +28,13 @@ const unsigned int SCR_WIDTH = 1024;
 const unsigned int SCR_HEIGHT = 768;
 
 // camera
-Camera camera(glm::vec3(0.0f, 0.0f, 3.0f));
+Camera camera(glm::vec3(0.0f, 1.0f, 4.5f));
 float lastX = SCR_WIDTH / 2.0f;
 float lastY = SCR_HEIGHT / 2.0f;
 bool firstMouse = true;
 
 // timing
-float deltaTime = 0.0f;	// time between current frame and last frame
+float deltaTime = 0.0f; // time between current frame and last frame
 float lastFrame = 0.0f;
 
 int main()
@@ -49,7 +52,7 @@ int main()
 
     // glfw window creation
     // --------------------
-    GLFWwindow* window = glfwCreateWindow(SCR_WIDTH, SCR_HEIGHT, "LearnOpenGL", NULL, NULL);
+    GLFWwindow *window = glfwCreateWindow(SCR_WIDTH, SCR_HEIGHT, "LearnOpenGL", NULL, NULL);
     if (window == NULL)
     {
         std::cout << "Failed to create GLFW window" << std::endl;
@@ -78,100 +81,97 @@ int main()
 
     // build and compile shaders
     // -------------------------
-    Shader shader("shaders/cubemaps/vertex_shader.vs", "shaders/cubemaps/fragment_shader.fs");
-    Shader skyboxShader("shaders/skybox/vertex_shader.vs", "shaders/skybox/fragment_shader.fs");
+    Shader shader("/Users/radziminski/Documents/repos/TRAK/src/shaders/vertex_shader.vs", "/Users/radziminski/Documents/repos/TRAK/src/shaders/fragment_shader.fs");
+    Shader skyboxShader("/Users/radziminski/Documents/repos/TRAK/src/shaders/skybox/vertex_shader.vs", "/Users/radziminski/Documents/repos/TRAK/src/shaders/skybox/fragment_shader.fs");
 
-    
     // set up vertex data (and buffer(s)) and configure vertex attributes
     // ------------------------------------------------------------------
-   float cubeVertices[] = {
+    float cubeVertices[] = {
         // positions          // normals
-        -0.5f, -0.5f, -0.5f,  0.0f,  0.0f, -1.0f,
-         0.5f, -0.5f, -0.5f,  0.0f,  0.0f, -1.0f,
-         0.5f,  0.5f, -0.5f,  0.0f,  0.0f, -1.0f,
-         0.5f,  0.5f, -0.5f,  0.0f,  0.0f, -1.0f,
-        -0.5f,  0.5f, -0.5f,  0.0f,  0.0f, -1.0f,
-        -0.5f, -0.5f, -0.5f,  0.0f,  0.0f, -1.0f,
+        -0.5f, -0.5f, -0.5f, 0.0f, 0.0f, -1.0f,
+        0.5f, -0.5f, -0.5f, 0.0f, 0.0f, -1.0f,
+        0.5f, 0.5f, -0.5f, 0.0f, 0.0f, -1.0f,
+        0.5f, 0.5f, -0.5f, 0.0f, 0.0f, -1.0f,
+        -0.5f, 0.5f, -0.5f, 0.0f, 0.0f, -1.0f,
+        -0.5f, -0.5f, -0.5f, 0.0f, 0.0f, -1.0f,
 
-        -0.5f, -0.5f,  0.5f,  0.0f,  0.0f, 1.0f,
-         0.5f, -0.5f,  0.5f,  0.0f,  0.0f, 1.0f,
-         0.5f,  0.5f,  0.5f,  0.0f,  0.0f, 1.0f,
-         0.5f,  0.5f,  0.5f,  0.0f,  0.0f, 1.0f,
-        -0.5f,  0.5f,  0.5f,  0.0f,  0.0f, 1.0f,
-        -0.5f, -0.5f,  0.5f,  0.0f,  0.0f, 1.0f,
+        -0.5f, -0.5f, 0.5f, 0.0f, 0.0f, 1.0f,
+        0.5f, -0.5f, 0.5f, 0.0f, 0.0f, 1.0f,
+        0.5f, 0.5f, 0.5f, 0.0f, 0.0f, 1.0f,
+        0.5f, 0.5f, 0.5f, 0.0f, 0.0f, 1.0f,
+        -0.5f, 0.5f, 0.5f, 0.0f, 0.0f, 1.0f,
+        -0.5f, -0.5f, 0.5f, 0.0f, 0.0f, 1.0f,
 
-        -0.5f,  0.5f,  0.5f, -1.0f,  0.0f,  0.0f,
-        -0.5f,  0.5f, -0.5f, -1.0f,  0.0f,  0.0f,
-        -0.5f, -0.5f, -0.5f, -1.0f,  0.0f,  0.0f,
-        -0.5f, -0.5f, -0.5f, -1.0f,  0.0f,  0.0f,
-        -0.5f, -0.5f,  0.5f, -1.0f,  0.0f,  0.0f,
-        -0.5f,  0.5f,  0.5f, -1.0f,  0.0f,  0.0f,
+        -0.5f, 0.5f, 0.5f, -1.0f, 0.0f, 0.0f,
+        -0.5f, 0.5f, -0.5f, -1.0f, 0.0f, 0.0f,
+        -0.5f, -0.5f, -0.5f, -1.0f, 0.0f, 0.0f,
+        -0.5f, -0.5f, -0.5f, -1.0f, 0.0f, 0.0f,
+        -0.5f, -0.5f, 0.5f, -1.0f, 0.0f, 0.0f,
+        -0.5f, 0.5f, 0.5f, -1.0f, 0.0f, 0.0f,
 
-         0.5f,  0.5f,  0.5f,  1.0f,  0.0f,  0.0f,
-         0.5f,  0.5f, -0.5f,  1.0f,  0.0f,  0.0f,
-         0.5f, -0.5f, -0.5f,  1.0f,  0.0f,  0.0f,
-         0.5f, -0.5f, -0.5f,  1.0f,  0.0f,  0.0f,
-         0.5f, -0.5f,  0.5f,  1.0f,  0.0f,  0.0f,
-         0.5f,  0.5f,  0.5f,  1.0f,  0.0f,  0.0f,
+        0.5f, 0.5f, 0.5f, 1.0f, 0.0f, 0.0f,
+        0.5f, 0.5f, -0.5f, 1.0f, 0.0f, 0.0f,
+        0.5f, -0.5f, -0.5f, 1.0f, 0.0f, 0.0f,
+        0.5f, -0.5f, -0.5f, 1.0f, 0.0f, 0.0f,
+        0.5f, -0.5f, 0.5f, 1.0f, 0.0f, 0.0f,
+        0.5f, 0.5f, 0.5f, 1.0f, 0.0f, 0.0f,
 
-        -0.5f, -0.5f, -0.5f,  0.0f, -1.0f,  0.0f,
-         0.5f, -0.5f, -0.5f,  0.0f, -1.0f,  0.0f,
-         0.5f, -0.5f,  0.5f,  0.0f, -1.0f,  0.0f,
-         0.5f, -0.5f,  0.5f,  0.0f, -1.0f,  0.0f,
-        -0.5f, -0.5f,  0.5f,  0.0f, -1.0f,  0.0f,
-        -0.5f, -0.5f, -0.5f,  0.0f, -1.0f,  0.0f,
+        -0.5f, -0.5f, -0.5f, 0.0f, -1.0f, 0.0f,
+        0.5f, -0.5f, -0.5f, 0.0f, -1.0f, 0.0f,
+        0.5f, -0.5f, 0.5f, 0.0f, -1.0f, 0.0f,
+        0.5f, -0.5f, 0.5f, 0.0f, -1.0f, 0.0f,
+        -0.5f, -0.5f, 0.5f, 0.0f, -1.0f, 0.0f,
+        -0.5f, -0.5f, -0.5f, 0.0f, -1.0f, 0.0f,
 
-        -0.5f,  0.5f, -0.5f,  0.0f,  1.0f,  0.0f,
-         0.5f,  0.5f, -0.5f,  0.0f,  1.0f,  0.0f,
-         0.5f,  0.5f,  0.5f,  0.0f,  1.0f,  0.0f,
-         0.5f,  0.5f,  0.5f,  0.0f,  1.0f,  0.0f,
-        -0.5f,  0.5f,  0.5f,  0.0f,  1.0f,  0.0f,
-        -0.5f,  0.5f, -0.5f,  0.0f,  1.0f,  0.0f
-    };
+        -0.5f, 0.5f, -0.5f, 0.0f, 1.0f, 0.0f,
+        0.5f, 0.5f, -0.5f, 0.0f, 1.0f, 0.0f,
+        0.5f, 0.5f, 0.5f, 0.0f, 1.0f, 0.0f,
+        0.5f, 0.5f, 0.5f, 0.0f, 1.0f, 0.0f,
+        -0.5f, 0.5f, 0.5f, 0.0f, 1.0f, 0.0f,
+        -0.5f, 0.5f, -0.5f, 0.0f, 1.0f, 0.0f};
     float skyboxVertices[] = {
-        // positions          
-        -1.0f,  1.0f, -1.0f,
+        // positions
+        -1.0f, 1.0f, -1.0f,
         -1.0f, -1.0f, -1.0f,
-         1.0f, -1.0f, -1.0f,
-         1.0f, -1.0f, -1.0f,
-         1.0f,  1.0f, -1.0f,
-        -1.0f,  1.0f, -1.0f,
+        1.0f, -1.0f, -1.0f,
+        1.0f, -1.0f, -1.0f,
+        1.0f, 1.0f, -1.0f,
+        -1.0f, 1.0f, -1.0f,
 
-        -1.0f, -1.0f,  1.0f,
+        -1.0f, -1.0f, 1.0f,
         -1.0f, -1.0f, -1.0f,
-        -1.0f,  1.0f, -1.0f,
-        -1.0f,  1.0f, -1.0f,
-        -1.0f,  1.0f,  1.0f,
-        -1.0f, -1.0f,  1.0f,
+        -1.0f, 1.0f, -1.0f,
+        -1.0f, 1.0f, -1.0f,
+        -1.0f, 1.0f, 1.0f,
+        -1.0f, -1.0f, 1.0f,
 
-         1.0f, -1.0f, -1.0f,
-         1.0f, -1.0f,  1.0f,
-         1.0f,  1.0f,  1.0f,
-         1.0f,  1.0f,  1.0f,
-         1.0f,  1.0f, -1.0f,
-         1.0f, -1.0f, -1.0f,
+        1.0f, -1.0f, -1.0f,
+        1.0f, -1.0f, 1.0f,
+        1.0f, 1.0f, 1.0f,
+        1.0f, 1.0f, 1.0f,
+        1.0f, 1.0f, -1.0f,
+        1.0f, -1.0f, -1.0f,
 
-        -1.0f, -1.0f,  1.0f,
-        -1.0f,  1.0f,  1.0f,
-         1.0f,  1.0f,  1.0f,
-         1.0f,  1.0f,  1.0f,
-         1.0f, -1.0f,  1.0f,
-        -1.0f, -1.0f,  1.0f,
+        -1.0f, -1.0f, 1.0f,
+        -1.0f, 1.0f, 1.0f,
+        1.0f, 1.0f, 1.0f,
+        1.0f, 1.0f, 1.0f,
+        1.0f, -1.0f, 1.0f,
+        -1.0f, -1.0f, 1.0f,
 
-        -1.0f,  1.0f, -1.0f,
-         1.0f,  1.0f, -1.0f,
-         1.0f,  1.0f,  1.0f,
-         1.0f,  1.0f,  1.0f,
-        -1.0f,  1.0f,  1.0f,
-        -1.0f,  1.0f, -1.0f,
+        -1.0f, 1.0f, -1.0f,
+        1.0f, 1.0f, -1.0f,
+        1.0f, 1.0f, 1.0f,
+        1.0f, 1.0f, 1.0f,
+        -1.0f, 1.0f, 1.0f,
+        -1.0f, 1.0f, -1.0f,
 
         -1.0f, -1.0f, -1.0f,
-        -1.0f, -1.0f,  1.0f,
-         1.0f, -1.0f, -1.0f,
-         1.0f, -1.0f, -1.0f,
-        -1.0f, -1.0f,  1.0f,
-         1.0f, -1.0f,  1.0f
-    };
+        -1.0f, -1.0f, 1.0f,
+        1.0f, -1.0f, -1.0f,
+        1.0f, -1.0f, -1.0f,
+        -1.0f, -1.0f, 1.0f,
+        1.0f, -1.0f, 1.0f};
 
     // cube VAO
     unsigned int cubeVAO, cubeVBO;
@@ -181,9 +181,9 @@ int main()
     glBindBuffer(GL_ARRAY_BUFFER, cubeVBO);
     glBufferData(GL_ARRAY_BUFFER, sizeof(cubeVertices), &cubeVertices, GL_STATIC_DRAW);
     glEnableVertexAttribArray(0);
-    glVertexAttribPointer(0, 3, GL_FLOAT, GL_FALSE, 6 * sizeof(float), (void*)0);
+    glVertexAttribPointer(0, 3, GL_FLOAT, GL_FALSE, 6 * sizeof(float), (void *)0);
     glEnableVertexAttribArray(1);
-    glVertexAttribPointer(1, 3, GL_FLOAT, GL_FALSE, 6 * sizeof(float), (void*)(3 * sizeof(float)));
+    glVertexAttribPointer(1, 3, GL_FLOAT, GL_FALSE, 6 * sizeof(float), (void *)(3 * sizeof(float)));
     // skybox VAO
     unsigned int skyboxVAO, skyboxVBO;
     glGenVertexArrays(1, &skyboxVAO);
@@ -192,18 +192,17 @@ int main()
     glBindBuffer(GL_ARRAY_BUFFER, skyboxVBO);
     glBufferData(GL_ARRAY_BUFFER, sizeof(skyboxVertices), &skyboxVertices, GL_STATIC_DRAW);
     glEnableVertexAttribArray(0);
-    glVertexAttribPointer(0, 3, GL_FLOAT, GL_FALSE, 3 * sizeof(float), (void*)0);
+    glVertexAttribPointer(0, 3, GL_FLOAT, GL_FALSE, 3 * sizeof(float), (void *)0);
 
     // load textures
     // -------------
-    std::vector<std::string> faces
-    {
-        std::filesystem::path("resources/textures/skybox/right.jpg"),
-        std::filesystem::path("resources/textures/skybox/left.jpg"),
-        std::filesystem::path("resources/textures/skybox/top.jpg"),
-        std::filesystem::path("resources/textures/skybox/bottom.jpg"),
-        std::filesystem::path("resources/textures/skybox/front.jpg"),
-        std::filesystem::path("resources/textures/skybox/back.jpg"),
+    std::vector<std::string> faces{
+        std::filesystem::path("/Users/radziminski/Documents/repos/TRAK/src/resources/textures/skybox/right.jpg"),
+        std::filesystem::path("/Users/radziminski/Documents/repos/TRAK/src/resources/textures/skybox/left.jpg"),
+        std::filesystem::path("/Users/radziminski/Documents/repos/TRAK/src/resources/textures/skybox/top.jpg"),
+        std::filesystem::path("/Users/radziminski/Documents/repos/TRAK/src/resources/textures/skybox/bottom.jpg"),
+        std::filesystem::path("/Users/radziminski/Documents/repos/TRAK/src/resources/textures/skybox/front.jpg"),
+        std::filesystem::path("/Users/radziminski/Documents/repos/TRAK/src/resources/textures/skybox/back.jpg"),
     };
     unsigned int cubemapTexture = loadCubemap(faces);
 
@@ -214,6 +213,8 @@ int main()
 
     skyboxShader.use();
     skyboxShader.setInt("skybox", 0);
+
+    Model ourModel(std::filesystem::path("/Users/radziminski/Documents/repos/TRAK/src/assets/models/tree.obj"));
 
     // render loop
     // -----------
@@ -239,11 +240,15 @@ int main()
         glm::mat4 model = glm::mat4(1.0f);
         glm::mat4 view = camera.GetViewMatrix();
         glm::mat4 projection = glm::perspective(glm::radians(camera.Zoom), (float)SCR_WIDTH / (float)SCR_HEIGHT, 0.1f, 100.0f);
-        shader.setMat4("model", model);
         shader.setMat4("view", view);
         shader.setMat4("projection", projection);
         shader.setVec3("cameraPos", camera.Position);
-        // cubes
+
+        // model = glm::scale(model, glm::vec3(0.05f, 0.05f, 0.05f));
+        // shader.setMat4("model", model);
+        // ourModel.Draw(shader);
+
+        // // cubes
         glBindVertexArray(cubeVAO);
         glActiveTexture(GL_TEXTURE0);
         glBindTexture(GL_TEXTURE_CUBE_MAP, cubemapTexture);
@@ -251,7 +256,7 @@ int main()
         glBindVertexArray(0);
 
         // draw skybox as last
-        glDepthFunc(GL_LEQUAL);  // change depth function so depth test passes when values are equal to depth buffer's content
+        glDepthFunc(GL_LEQUAL); // change depth function so depth test passes when values are equal to depth buffer's content
         skyboxShader.use();
         view = glm::mat4(glm::mat3(camera.GetViewMatrix())); // remove translation from the view matrix
         skyboxShader.setMat4("view", view);
@@ -300,17 +305,16 @@ void processInput(GLFWwindow *window)
 
 // glfw: whenever the window size changed (by OS or user resize) this callback function executes
 // ---------------------------------------------------------------------------------------------
-void framebuffer_size_callback(GLFWwindow* window, int width, int height)
+void framebuffer_size_callback(GLFWwindow *window, int width, int height)
 {
-    // make sure the viewport matches the new window dimensions; note that width and 
+    // make sure the viewport matches the new window dimensions; note that width and
     // height will be significantly larger than specified on retina displays.
     glViewport(0, 0, width, height);
 }
 
-
 // glfw: whenever the mouse moves, this callback is called
 // -------------------------------------------------------
-void mouse_callback(GLFWwindow* window, double xposIn, double yposIn)
+void mouse_callback(GLFWwindow *window, double xposIn, double yposIn)
 {
     float xpos = static_cast<float>(xposIn);
     float ypos = static_cast<float>(yposIn);
@@ -333,7 +337,7 @@ void mouse_callback(GLFWwindow* window, double xposIn, double yposIn)
 
 // utility function for loading a 2D texture from file
 // ---------------------------------------------------
-unsigned int loadTexture(char const * path)
+unsigned int loadTexture(char const *path)
 {
     unsigned int textureID;
     glGenTextures(1, &textureID);
@@ -376,7 +380,7 @@ unsigned int loadTexture(char const * path)
 // -X (left)
 // +Y (top)
 // -Y (bottom)
-// +Z (front) 
+// +Z (front)
 // -Z (back)
 // -------------------------------------------------------
 unsigned int loadCubemap(std::vector<std::string> faces)
@@ -411,7 +415,7 @@ unsigned int loadCubemap(std::vector<std::string> faces)
 
 // glfw: whenever the mouse scroll wheel scrolls, this callback is called
 // ----------------------------------------------------------------------
-void scroll_callback(GLFWwindow* window, double xoffset, double yoffset)
+void scroll_callback(GLFWwindow *window, double xoffset, double yoffset)
 {
     camera.ProcessMouseScroll(static_cast<float>(yoffset));
 }

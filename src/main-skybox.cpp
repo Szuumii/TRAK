@@ -14,7 +14,7 @@
 
 #include <iostream>
 
-const std::string PROJECT_ROOT = "/Users/radziminski/Documents/repos/TRAK/src";
+const std::string PROJECT_ROOT = "/Users/jakubszumski/GitRepos/TRAK/src";
 
 void framebuffer_size_callback(GLFWwindow *window, int width, int height);
 void mouse_callback(GLFWwindow *window, double xpos, double ypos);
@@ -81,8 +81,8 @@ int main()
 
     // build and compile shaders
     // -------------------------
-    Shader shader("/Users/radziminski/Documents/repos/TRAK/src/shaders/vertex_shader.vs", "/Users/radziminski/Documents/repos/TRAK/src/shaders/fragment_shader.fs");
-    Shader skyboxShader("/Users/radziminski/Documents/repos/TRAK/src/shaders/skybox/vertex_shader.vs", "/Users/radziminski/Documents/repos/TRAK/src/shaders/skybox/fragment_shader.fs");
+    Shader shader("/Users/jakubszumski/GitRepos/TRAK/src/shaders/cubemaps/vertex_shader.vs", "/Users/jakubszumski/GitRepos/TRAK/src/shaders/cubemaps/fragment_shader.fs");
+    Shader skyboxShader("/Users/jakubszumski/GitRepos/TRAK/src/shaders/skybox/vertex_shader.vs", "/Users/jakubszumski/GitRepos/TRAK/src/shaders/skybox/fragment_shader.fs");
 
     // set up vertex data (and buffer(s)) and configure vertex attributes
     // ------------------------------------------------------------------
@@ -197,12 +197,12 @@ int main()
     // load textures
     // -------------
     std::vector<std::string> faces{
-        std::filesystem::path("/Users/radziminski/Documents/repos/TRAK/src/resources/textures/skybox/right.jpg"),
-        std::filesystem::path("/Users/radziminski/Documents/repos/TRAK/src/resources/textures/skybox/left.jpg"),
-        std::filesystem::path("/Users/radziminski/Documents/repos/TRAK/src/resources/textures/skybox/top.jpg"),
-        std::filesystem::path("/Users/radziminski/Documents/repos/TRAK/src/resources/textures/skybox/bottom.jpg"),
-        std::filesystem::path("/Users/radziminski/Documents/repos/TRAK/src/resources/textures/skybox/front.jpg"),
-        std::filesystem::path("/Users/radziminski/Documents/repos/TRAK/src/resources/textures/skybox/back.jpg"),
+        std::filesystem::path("/Users/jakubszumski/GitRepos/TRAK/src/resources/textures/skybox/right.jpg"),
+        std::filesystem::path("/Users/jakubszumski/GitRepos/TRAK/src/resources/textures/skybox/left.jpg"),
+        std::filesystem::path("/Users/jakubszumski/GitRepos/TRAK/src/resources/textures/skybox/top.jpg"),
+        std::filesystem::path("/Users/jakubszumski/GitRepos/TRAK/src/resources/textures/skybox/bottom.jpg"),
+        std::filesystem::path("/Users/jakubszumski/GitRepos/TRAK/src/resources/textures/skybox/front.jpg"),
+        std::filesystem::path("/Users/jakubszumski/GitRepos/TRAK/src/resources/textures/skybox/back.jpg"),
     };
     unsigned int cubemapTexture = loadCubemap(faces);
 
@@ -214,7 +214,7 @@ int main()
     skyboxShader.use();
     skyboxShader.setInt("skybox", 0);
 
-    Model ourModel(std::filesystem::path("/Users/radziminski/Documents/repos/TRAK/src/assets/models/tree.obj"));
+    Model ourModel(std::filesystem::path("/Users/jakubszumski/GitRepos/TRAK/src/assets/models/tree.obj"));
 
     // render loop
     // -----------
@@ -240,15 +240,11 @@ int main()
         glm::mat4 model = glm::mat4(1.0f);
         glm::mat4 view = camera.GetViewMatrix();
         glm::mat4 projection = glm::perspective(glm::radians(camera.Zoom), (float)SCR_WIDTH / (float)SCR_HEIGHT, 0.1f, 100.0f);
+        shader.setMat4("model", model);
         shader.setMat4("view", view);
         shader.setMat4("projection", projection);
         shader.setVec3("cameraPos", camera.Position);
-
-        // model = glm::scale(model, glm::vec3(0.05f, 0.05f, 0.05f));
-        // shader.setMat4("model", model);
-        // ourModel.Draw(shader);
-
-        // // cubes
+        // cubes
         glBindVertexArray(cubeVAO);
         glActiveTexture(GL_TEXTURE0);
         glBindTexture(GL_TEXTURE_CUBE_MAP, cubemapTexture);
@@ -256,7 +252,7 @@ int main()
         glBindVertexArray(0);
 
         // draw skybox as last
-        glDepthFunc(GL_LEQUAL); // change depth function so depth test passes when values are equal to depth buffer's content
+        glDepthFunc(GL_LEQUAL);  // change depth function so depth test passes when values are equal to depth buffer's content
         skyboxShader.use();
         view = glm::mat4(glm::mat3(camera.GetViewMatrix())); // remove translation from the view matrix
         skyboxShader.setMat4("view", view);

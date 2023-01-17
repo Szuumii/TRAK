@@ -11,10 +11,16 @@
 #include "./shaders/shader.cpp"
 #include "camera.h"
 #include "model.h"
+#include "file_loader.h"
 
 #include <iostream>
+#include <string>
 
-const std::string PROJECT_ROOT = "/Users/jakubszumski/GitRepos/TRAK/src";
+const std::string PROJECT_ROOT = "/Users/radziminski/Documents/repos/TRAK/src/";
+const std::string VS_PATH = "/Users/radziminski/Documents/repos/TRAK/src/shaders/cubemaps/vertex_shader.vs";
+const std::string FS_PATH = "/Users/radziminski/Documents/repos/TRAK/src/shaders/cubemaps/fragment_shader.fs";
+const std::string SKYBOX_VS_PATH = "/Users/radziminski/Documents/repos/TRAK/src/shaders/skybox/vertex_shader.vs";
+const std::string SKYBOX_FS_PATH = "/Users/radziminski/Documents/repos/TRAK/src/shaders/skybox/fragment_shader.fs";
 
 void framebuffer_size_callback(GLFWwindow *window, int width, int height);
 void mouse_callback(GLFWwindow *window, double xpos, double ypos);
@@ -36,6 +42,9 @@ bool firstMouse = true;
 // timing
 float deltaTime = 0.0f; // time between current frame and last frame
 float lastFrame = 0.0f;
+
+// file loader
+FileLoader fileLoader(PROJECT_ROOT);
 
 int main()
 {
@@ -81,8 +90,8 @@ int main()
 
     // build and compile shaders
     // -------------------------
-    Shader shader("/Users/jakubszumski/GitRepos/TRAK/src/shaders/cubemaps/vertex_shader.vs", "/Users/jakubszumski/GitRepos/TRAK/src/shaders/cubemaps/fragment_shader.fs");
-    Shader skyboxShader("/Users/jakubszumski/GitRepos/TRAK/src/shaders/skybox/vertex_shader.vs", "/Users/jakubszumski/GitRepos/TRAK/src/shaders/skybox/fragment_shader.fs");
+    Shader shader(VS_PATH.c_str(), FS_PATH.c_str());
+    Shader skyboxShader(SKYBOX_VS_PATH.c_str(), SKYBOX_FS_PATH.c_str());
 
     // set up vertex data (and buffer(s)) and configure vertex attributes
     // ------------------------------------------------------------------
@@ -194,18 +203,6 @@ int main()
     glEnableVertexAttribArray(0);
     glVertexAttribPointer(0, 3, GL_FLOAT, GL_FALSE, 3 * sizeof(float), (void *)0);
 
-    // load textures
-    // -------------
-    std::vector<std::string> faces{
-        std::filesystem::path("/Users/jakubszumski/GitRepos/TRAK/src/assets/textures/skybox/right.jpg"),
-        std::filesystem::path("/Users/jakubszumski/GitRepos/TRAK/src/assets/textures/skybox/left.jpg"),
-        std::filesystem::path("/Users/jakubszumski/GitRepos/TRAK/src/assets/textures/skybox/top.jpg"),
-        std::filesystem::path("/Users/jakubszumski/GitRepos/TRAK/src/assets/textures/skybox/bottom.jpg"),
-        std::filesystem::path("/Users/jakubszumski/GitRepos/TRAK/src/assets/textures/skybox/front.jpg"),
-        std::filesystem::path("/Users/jakubszumski/GitRepos/TRAK/src/assets/textures/skybox/back.jpg"),
-    };
-    unsigned int cubemapTexture = loadCubemap(faces);
-
     // shader configuration
     // --------------------
     shader.use();
@@ -214,10 +211,30 @@ int main()
     skyboxShader.use();
     skyboxShader.setInt("skybox", 0);
 
-    Model ourModel(std::filesystem::path("/Users/jakubszumski/GitRepos/TRAK/src/assets/models/car.obj"));
+    std::cout << std::endl;
+    fileLoader.chooseObject();
+    std::cout << std::endl;
+
+    fileLoader.chooseSkybox();
+    std::cout << std::endl;
+
+    Model ourModel(std::filesystem::path(fileLoader.chosenObjectPath.c_str()));
+
+    // load textures
+    // -------------
+    std::vector<std::string> faces{
+        std::filesystem::path(fileLoader.chosenSkyboxPath.c_str() + std::string("/right.jpg")),
+        std::filesystem::path(fileLoader.chosenSkyboxPath.c_str() + std::string("/left.jpg")),
+        std::filesystem::path(fileLoader.chosenSkyboxPath.c_str() + std::string("/top.jpg")),
+        std::filesystem::path(fileLoader.chosenSkyboxPath.c_str() + std::string("/bottom.jpg")),
+        std::filesystem::path(fileLoader.chosenSkyboxPath.c_str() + std::string("/front.jpg")),
+        std::filesystem::path(fileLoader.chosenSkyboxPath.c_str() + std::string("/back.jpg")),
+    };
+    unsigned int cubemapTexture = loadCubemap(faces);
 
     // render loop
     // -----------
+
     while (!glfwWindowShouldClose(window))
     {
         // per-frame time logic
@@ -249,7 +266,7 @@ int main()
         ourModel.Draw(shader);
 
         // draw skybox as last
-        glDepthFunc(GL_LEQUAL);  // change depth function so depth test passes when values are equal to depth buffer's content
+        glDepthFunc(GL_LEQUAL); // change depth function so depth test passes when values are equal to depth buffer's content
         skyboxShader.use();
         view = glm::mat4(glm::mat3(camera.GetViewMatrix())); // remove translation from the view matrix
         skyboxShader.setMat4("view", view);

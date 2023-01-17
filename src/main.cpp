@@ -18,7 +18,7 @@
 #include "skybox.cpp"
 #include <string>
 
-const std::string PROJECT_ROOT = "/Users/radziminski/Documents/repos/TRAK/src/";
+const std::string PROJECT_ROOT = "src";
 const std::string VS_PATH = "/Users/radziminski/Documents/repos/TRAK/src/shaders/cubemaps/vertex_shader.vs";
 const std::string FS_PATH = "/Users/radziminski/Documents/repos/TRAK/src/shaders/cubemaps/fragment_shader.fs";
 const std::string SKYBOX_VS_PATH = "/Users/radziminski/Documents/repos/TRAK/src/shaders/skybox/vertex_shader.vs";

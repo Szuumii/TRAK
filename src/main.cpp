@@ -11,9 +11,11 @@
 #include "./shaders/shader.cpp"
 #include "camera.h"
 #include "model.h"
+#include <filesystem>
 #include "file_loader.h"
 
 #include <iostream>
+#include "skybox.cpp"
 #include <string>
 
 const std::string PROJECT_ROOT = "/Users/radziminski/Documents/repos/TRAK/src/";
@@ -28,6 +30,7 @@ void scroll_callback(GLFWwindow *window, double xoffset, double yoffset);
 void processInput(GLFWwindow *window);
 unsigned int loadTexture(const char *path);
 unsigned int loadCubemap(std::vector<std::string> faces);
+std::vector<std::string> getFaces();
 
 // settings
 const unsigned int SCR_WIDTH = 1024;
@@ -90,8 +93,8 @@ int main()
 
     // build and compile shaders
     // -------------------------
-    Shader shader(VS_PATH.c_str(), FS_PATH.c_str());
-    Shader skyboxShader(SKYBOX_VS_PATH.c_str(), SKYBOX_FS_PATH.c_str());
+    Shader shader("src/shaders/cubemaps/vertex_shader.vs", "src/shaders/cubemaps/fragment_shader.fs");
+    Shader skyboxShader("src/shaders/skybox/vertex_shader.vs", "src/shaders/skybox/fragment_shader.fs");
 
     // set up vertex data (and buffer(s)) and configure vertex attributes
     // ------------------------------------------------------------------
@@ -138,49 +141,6 @@ int main()
         0.5f, 0.5f, 0.5f, 0.0f, 1.0f, 0.0f,
         -0.5f, 0.5f, 0.5f, 0.0f, 1.0f, 0.0f,
         -0.5f, 0.5f, -0.5f, 0.0f, 1.0f, 0.0f};
-    float skyboxVertices[] = {
-        // positions
-        -1.0f, 1.0f, -1.0f,
-        -1.0f, -1.0f, -1.0f,
-        1.0f, -1.0f, -1.0f,
-        1.0f, -1.0f, -1.0f,
-        1.0f, 1.0f, -1.0f,
-        -1.0f, 1.0f, -1.0f,
-
-        -1.0f, -1.0f, 1.0f,
-        -1.0f, -1.0f, -1.0f,
-        -1.0f, 1.0f, -1.0f,
-        -1.0f, 1.0f, -1.0f,
-        -1.0f, 1.0f, 1.0f,
-        -1.0f, -1.0f, 1.0f,
-
-        1.0f, -1.0f, -1.0f,
-        1.0f, -1.0f, 1.0f,
-        1.0f, 1.0f, 1.0f,
-        1.0f, 1.0f, 1.0f,
-        1.0f, 1.0f, -1.0f,
-        1.0f, -1.0f, -1.0f,
-
-        -1.0f, -1.0f, 1.0f,
-        -1.0f, 1.0f, 1.0f,
-        1.0f, 1.0f, 1.0f,
-        1.0f, 1.0f, 1.0f,
-        1.0f, -1.0f, 1.0f,
-        -1.0f, -1.0f, 1.0f,
-
-        -1.0f, 1.0f, -1.0f,
-        1.0f, 1.0f, -1.0f,
-        1.0f, 1.0f, 1.0f,
-        1.0f, 1.0f, 1.0f,
-        -1.0f, 1.0f, 1.0f,
-        -1.0f, 1.0f, -1.0f,
-
-        -1.0f, -1.0f, -1.0f,
-        -1.0f, -1.0f, 1.0f,
-        1.0f, -1.0f, -1.0f,
-        1.0f, -1.0f, -1.0f,
-        -1.0f, -1.0f, 1.0f,
-        1.0f, -1.0f, 1.0f};
 
     // cube VAO
     unsigned int cubeVAO, cubeVBO;
@@ -193,48 +153,19 @@ int main()
     glVertexAttribPointer(0, 3, GL_FLOAT, GL_FALSE, 6 * sizeof(float), (void *)0);
     glEnableVertexAttribArray(1);
     glVertexAttribPointer(1, 3, GL_FLOAT, GL_FALSE, 6 * sizeof(float), (void *)(3 * sizeof(float)));
-    // skybox VAO
-    unsigned int skyboxVAO, skyboxVBO;
-    glGenVertexArrays(1, &skyboxVAO);
-    glGenBuffers(1, &skyboxVBO);
-    glBindVertexArray(skyboxVAO);
-    glBindBuffer(GL_ARRAY_BUFFER, skyboxVBO);
-    glBufferData(GL_ARRAY_BUFFER, sizeof(skyboxVertices), &skyboxVertices, GL_STATIC_DRAW);
-    glEnableVertexAttribArray(0);
-    glVertexAttribPointer(0, 3, GL_FLOAT, GL_FALSE, 3 * sizeof(float), (void *)0);
+    unsigned int cubemapTexture = loadCubemap(getFaces());
 
-    // shader configuration
-    // --------------------
-    shader.use();
-    shader.setInt("skybox", 0);
-
-    skyboxShader.use();
-    skyboxShader.setInt("skybox", 0);
-
+    Skybox skybox(skyboxShader, cubemapTexture);
     std::cout << std::endl;
     fileLoader.chooseObject();
     std::cout << std::endl;
 
     fileLoader.chooseSkybox();
     std::cout << std::endl;
-
-    Model ourModel(std::filesystem::path(fileLoader.chosenObjectPath.c_str()));
-
-    // load textures
-    // -------------
-    std::vector<std::string> faces{
-        std::filesystem::path(fileLoader.chosenSkyboxPath.c_str() + std::string("/right.jpg")),
-        std::filesystem::path(fileLoader.chosenSkyboxPath.c_str() + std::string("/left.jpg")),
-        std::filesystem::path(fileLoader.chosenSkyboxPath.c_str() + std::string("/top.jpg")),
-        std::filesystem::path(fileLoader.chosenSkyboxPath.c_str() + std::string("/bottom.jpg")),
-        std::filesystem::path(fileLoader.chosenSkyboxPath.c_str() + std::string("/front.jpg")),
-        std::filesystem::path(fileLoader.chosenSkyboxPath.c_str() + std::string("/back.jpg")),
-    };
-    unsigned int cubemapTexture = loadCubemap(faces);
+    Model ourModel(std::filesystem::path("src/assets/models/car.obj"));
 
     // render loop
     // -----------
-
     while (!glfwWindowShouldClose(window))
     {
         // per-frame time logic
@@ -266,17 +197,13 @@ int main()
         ourModel.Draw(shader);
 
         // draw skybox as last
-        glDepthFunc(GL_LEQUAL); // change depth function so depth test passes when values are equal to depth buffer's content
+        glDepthFunc(GL_LEQUAL);  // change depth function so depth test passes when values are equal to depth buffer's content
         skyboxShader.use();
         view = glm::mat4(glm::mat3(camera.GetViewMatrix())); // remove translation from the view matrix
+        skyboxShader.use();
         skyboxShader.setMat4("view", view);
         skyboxShader.setMat4("projection", projection);
-        // skybox cube
-        glBindVertexArray(skyboxVAO);
-        glActiveTexture(GL_TEXTURE0);
-        glBindTexture(GL_TEXTURE_CUBE_MAP, cubemapTexture);
-        glDrawArrays(GL_TRIANGLES, 0, 36);
-        glBindVertexArray(0);
+        skybox.draw();
         glDepthFunc(GL_LESS); // set depth function back to default
 
         // glfw: swap buffers and poll IO events (keys pressed/released, mouse moved etc.)
@@ -288,10 +215,8 @@ int main()
     // optional: de-allocate all resources once they've outlived their purpose:
     // ------------------------------------------------------------------------
     glDeleteVertexArrays(1, &cubeVAO);
-    glDeleteVertexArrays(1, &skyboxVAO);
     glDeleteBuffers(1, &cubeVBO);
-    glDeleteBuffers(1, &skyboxVBO);
-
+    skybox.deallocate();
     glfwTerminate();
     return 0;
 }
@@ -428,4 +353,16 @@ unsigned int loadCubemap(std::vector<std::string> faces)
 void scroll_callback(GLFWwindow *window, double xoffset, double yoffset)
 {
     camera.ProcessMouseScroll(static_cast<float>(yoffset));
+}
+
+std::vector<std::string> getFaces() {
+    std::vector<std::string> faces{
+            std::filesystem::path("src/assets/textures/skybox/right.jpg"),
+            std::filesystem::path("src/assets/textures/skybox/left.jpg"),
+            std::filesystem::path("src/assets/textures/skybox/top.jpg"),
+            std::filesystem::path("src/assets/textures/skybox/bottom.jpg"),
+            std::filesystem::path("src/assets/textures/skybox/front.jpg"),
+            std::filesystem::path("src/assets/textures/skybox/back.jpg"),
+    };
+    return faces;
 }

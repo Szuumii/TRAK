@@ -20,6 +20,8 @@ public:
     std::string chosenObjectPath;
     std::string chosenSkyboxPath;
 
+    float chosenRefractionIndex = 1.5;
+
     FileLoader(std::string root)
     {
         this->projectRoot = root;
@@ -51,7 +53,8 @@ public:
         }
         std::cout << "Type chosen index: ";
         int chosen_index = -1;
-        while (chosen_index < 0 || chosen_index > filepaths.size() - 1)
+        int guard = 0;
+        while ((chosen_index < 0 || chosen_index > filepaths.size() - 1) && guard++ < 20)
         {
             std::cout << "Please choose number between 0 and " << filepaths.size() - 1 << ": ";
             std::cin >> chosen_index;
@@ -82,5 +85,21 @@ public:
         this->chosenSkyboxPath = path;
 
         return path;
+    }
+
+    float chooseRefractionIndex()
+    {
+        std::cout << "Type in chosen refraction index: " << std::endl;
+        float chosen_index = 0;
+        int guard = 0;
+        while ((chosen_index < 1 || chosen_index > 5) && guard++ < 20)
+        {
+            std::cout << "Please choose number between 1 and 5: ";
+            std::cin >> chosen_index;
+        }
+
+        this->chosenRefractionIndex = chosen_index;
+
+        return chosen_index;
     }
 };

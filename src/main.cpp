@@ -50,6 +50,7 @@ float lastFrame = 0.0f;
 bool shouldExistFlag = false;
 bool shouldLoadObj = true;
 bool shouldLoadSkybox = true;
+bool shouldChooseRefractionIndex = true;
 
 // file loader
 FileLoader fileLoader(PROJECT_ROOT);
@@ -64,7 +65,8 @@ int main()
         return 0;
     }
 
-    while (!shouldExistFlag)
+    int guard = 0;
+    while (!shouldExistFlag && guard++ < 30)
     {
         renderScene(PROJECT_ROOT);
     }
@@ -200,18 +202,27 @@ int renderScene(std::string projectRoot)
             std::cout << std::endl;
         }
 
-        std::cout << "Model and skybox loaded - rendering scene...\n\n";
+        if (shouldChooseRefractionIndex)
+        {
+            shouldChooseRefractionIndex = false;
+            fileLoader.chooseRefractionIndex();
+            std::cout << std::endl;
+        }
+
+        std::cout << "Model, skybox and refraction index loaded - rendering scene...\n\n";
 
         std::cout << "Press:" << std::endl;
         std::cout << "0: to load different model" << std::endl;
         std::cout << "1: to load different skybox" << std::endl;
         std::cout << "2: to load different model and skybox" << std::endl;
-        std::cout << "3 or ESC: to shutdown the program" << std::endl;
+        std::cout << "3: to choose different refraction index" << std::endl;
+        std::cout << "4 or ESC: to shutdown the program" << std::endl;
     }
 
     Model ourModel(std::filesystem::path(fileLoader.chosenObjectPath));
     unsigned int cubemapTexture = loadCubemap(getFaces(fileLoader.chosenSkyboxPath));
     Skybox skybox(skyboxShader, cubemapTexture);
+    float refractionIndex = fileLoader.chosenRefractionIndex; // TODO: use this
 
     // render loop
     // -----------
@@ -274,7 +285,7 @@ int renderScene(std::string projectRoot)
 void processInput(GLFWwindow *window)
 {
     // Exit program
-    if (glfwGetKey(window, GLFW_KEY_ESCAPE) == GLFW_PRESS || glfwGetKey(window, GLFW_KEY_3) == GLFW_PRESS)
+    if (glfwGetKey(window, GLFW_KEY_ESCAPE) == GLFW_PRESS || glfwGetKey(window, GLFW_KEY_4) == GLFW_PRESS)
     {
         shouldExistFlag = true;
         glfwSetWindowShouldClose(window, true);
@@ -301,6 +312,14 @@ void processInput(GLFWwindow *window)
     {
         shouldLoadSkybox = true;
         shouldLoadObj = true;
+        glfwSetWindowShouldClose(window, true);
+        std::cout << "\nProgram reloaded!\n";
+    }
+
+    // Reload program and load refraction index
+    if (glfwGetKey(window, GLFW_KEY_3) == GLFW_PRESS)
+    {
+        shouldChooseRefractionIndex = true;
         glfwSetWindowShouldClose(window, true);
         std::cout << "\nProgram reloaded!\n";
     }

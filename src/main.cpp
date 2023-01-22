@@ -18,11 +18,9 @@
 #include "skybox.cpp"
 #include <string>
 
-const std::string PROJECT_ROOT = "src";
-const std::string VS_PATH = "/Users/radziminski/Documents/repos/TRAK/src/shaders/cubemaps/vertex_shader.vs";
-const std::string FS_PATH = "/Users/radziminski/Documents/repos/TRAK/src/shaders/cubemaps/fragment_shader.fs";
-const std::string SKYBOX_VS_PATH = "/Users/radziminski/Documents/repos/TRAK/src/shaders/skybox/vertex_shader.vs";
-const std::string SKYBOX_FS_PATH = "/Users/radziminski/Documents/repos/TRAK/src/shaders/skybox/fragment_shader.fs";
+std::string getProjectRoot();
+
+const std::string PROJECT_ROOT = getProjectRoot();
 
 void framebuffer_size_callback(GLFWwindow *window, int width, int height);
 void mouse_callback(GLFWwindow *window, double xpos, double ypos);
@@ -30,7 +28,7 @@ void scroll_callback(GLFWwindow *window, double xoffset, double yoffset);
 void processInput(GLFWwindow *window);
 unsigned int loadTexture(const char *path);
 unsigned int loadCubemap(std::vector<std::string> faces);
-std::vector<std::string> getFaces();
+std::vector<std::string> getFaces(std::string);
 
 // settings
 const unsigned int SCR_WIDTH = 1024;
@@ -51,6 +49,12 @@ FileLoader fileLoader(PROJECT_ROOT);
 
 int main()
 {
+    std::cout << "Using project root \"" << PROJECT_ROOT << "\"...\n";
+    const std::string VS_PATH = PROJECT_ROOT + "/shaders/cubemaps/vertex_shader.vs";
+    const std::string FS_PATH = PROJECT_ROOT + "/shaders/cubemaps/fragment_shader.fs";
+    const std::string SKYBOX_VS_PATH = PROJECT_ROOT + "/shaders/skybox/vertex_shader.vs";
+    const std::string SKYBOX_FS_PATH = PROJECT_ROOT + "/shaders/skybox/fragment_shader.fs";
+
     // glfw: initialize and configure
     // ------------------------------
     glfwInit();
@@ -93,8 +97,8 @@ int main()
 
     // build and compile shaders
     // -------------------------
-    Shader shader("src/shaders/cubemaps/vertex_shader.vs", "src/shaders/cubemaps/fragment_shader.fs");
-    Shader skyboxShader("src/shaders/skybox/vertex_shader.vs", "src/shaders/skybox/fragment_shader.fs");
+    Shader shader(VS_PATH.c_str(), FS_PATH.c_str());
+    Shader skyboxShader(SKYBOX_VS_PATH.c_str(), SKYBOX_FS_PATH.c_str());
 
     // set up vertex data (and buffer(s)) and configure vertex attributes
     // ------------------------------------------------------------------
@@ -153,16 +157,17 @@ int main()
     glVertexAttribPointer(0, 3, GL_FLOAT, GL_FALSE, 6 * sizeof(float), (void *)0);
     glEnableVertexAttribArray(1);
     glVertexAttribPointer(1, 3, GL_FLOAT, GL_FALSE, 6 * sizeof(float), (void *)(3 * sizeof(float)));
-    unsigned int cubemapTexture = loadCubemap(getFaces());
 
-    Skybox skybox(skyboxShader, cubemapTexture);
     std::cout << std::endl;
     fileLoader.chooseObject();
     std::cout << std::endl;
 
     fileLoader.chooseSkybox();
     std::cout << std::endl;
-    Model ourModel(std::filesystem::path("src/assets/models/car.obj"));
+    Model ourModel(std::filesystem::path(fileLoader.chosenObjectPath));
+
+    unsigned int cubemapTexture = loadCubemap(getFaces(fileLoader.chosenSkyboxPath));
+    Skybox skybox(skyboxShader, cubemapTexture);
 
     // render loop
     // -----------
@@ -197,7 +202,7 @@ int main()
         ourModel.Draw(shader);
 
         // draw skybox as last
-        glDepthFunc(GL_LEQUAL);  // change depth function so depth test passes when values are equal to depth buffer's content
+        glDepthFunc(GL_LEQUAL); // change depth function so depth test passes when values are equal to depth buffer's content
         skyboxShader.use();
         view = glm::mat4(glm::mat3(camera.GetViewMatrix())); // remove translation from the view matrix
         skyboxShader.use();
@@ -355,14 +360,21 @@ void scroll_callback(GLFWwindow *window, double xoffset, double yoffset)
     camera.ProcessMouseScroll(static_cast<float>(yoffset));
 }
 
-std::vector<std::string> getFaces() {
+std::vector<std::string> getFaces(std::string dir)
+{
     std::vector<std::string> faces{
-            std::filesystem::path("src/assets/textures/skybox/right.jpg"),
-            std::filesystem::path("src/assets/textures/skybox/left.jpg"),
-            std::filesystem::path("src/assets/textures/skybox/top.jpg"),
-            std::filesystem::path("src/assets/textures/skybox/bottom.jpg"),
-            std::filesystem::path("src/assets/textures/skybox/front.jpg"),
-            std::filesystem::path("src/assets/textures/skybox/back.jpg"),
+        std::filesystem::path(dir + string("/right.jpg")),
+        std::filesystem::path(dir + string("/left.jpg")),
+        std::filesystem::path(dir + string("/top.jpg")),
+        std::filesystem::path(dir + string("/bottom.jpg")),
+        std::filesystem::path(dir + string("/front.jpg")),
+        std::filesystem::path(dir + string("/back.jpg")),
     };
     return faces;
+}
+
+std::string getProjectRoot()
+{
+    char *val = getenv("ROOT");
+    return val == NULL ? std::string("src") : std::string(val);
 }

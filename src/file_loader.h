@@ -7,6 +7,8 @@ namespace fs = std::filesystem;
 
 const std::string MODELS_PATH_POSTFIX = "/assets/models";
 const std::string SKYBOXES_PATH_POSTFIX = "/assets/textures/skyboxes";
+const std::string DEFAULT_MODEL_PATH = "";
+const std::string DEFAULT_SKYBOX_PATH = "/assets/models/";
 
 class FileLoader
 {
@@ -24,8 +26,8 @@ public:
         this->modelsPath = root + MODELS_PATH_POSTFIX;
         this->skyboxesPath = root + SKYBOXES_PATH_POSTFIX;
 
-        this->chosenObjectPath = "";
-        this->chosenSkyboxPath = "";
+        this->chosenObjectPath = this->modelsPath + "/tree.obj";
+        this->chosenSkyboxPath = this->skyboxesPath + "/mountains";
     }
 
     std::string choosePathFromDir(std::string dir)

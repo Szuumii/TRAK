@@ -18,6 +18,8 @@
 #include "skybox.cpp"
 #include <string>
 
+const bool SHOW_CONTEXT_MENU = true;
+
 std::string getProjectRoot();
 
 const std::string PROJECT_ROOT = getProjectRoot();
@@ -29,6 +31,7 @@ void processInput(GLFWwindow *window);
 unsigned int loadTexture(const char *path);
 unsigned int loadCubemap(std::vector<std::string> faces);
 std::vector<std::string> getFaces(std::string);
+int renderScene(std::string);
 
 // settings
 const unsigned int SCR_WIDTH = 1024;
@@ -44,16 +47,37 @@ bool firstMouse = true;
 float deltaTime = 0.0f; // time between current frame and last frame
 float lastFrame = 0.0f;
 
+bool shouldExistFlag = false;
+bool shouldLoadObj = true;
+bool shouldLoadSkybox = true;
+
 // file loader
 FileLoader fileLoader(PROJECT_ROOT);
 
 int main()
 {
     std::cout << "Using project root \"" << PROJECT_ROOT << "\"...\n";
-    const std::string VS_PATH = PROJECT_ROOT + "/shaders/cubemaps/vertex_shader.vs";
-    const std::string FS_PATH = PROJECT_ROOT + "/shaders/cubemaps/fragment_shader.fs";
-    const std::string SKYBOX_VS_PATH = PROJECT_ROOT + "/shaders/skybox/vertex_shader.vs";
-    const std::string SKYBOX_FS_PATH = PROJECT_ROOT + "/shaders/skybox/fragment_shader.fs";
+
+    if (!SHOW_CONTEXT_MENU)
+    {
+        renderScene(PROJECT_ROOT);
+        return 0;
+    }
+
+    while (!shouldExistFlag)
+    {
+        renderScene(PROJECT_ROOT);
+    }
+
+    return 0;
+}
+
+int renderScene(std::string projectRoot)
+{
+    const std::string VS_PATH = projectRoot + "/shaders/cubemaps/vertex_shader.vs";
+    const std::string FS_PATH = projectRoot + "/shaders/cubemaps/fragment_shader.fs";
+    const std::string SKYBOX_VS_PATH = projectRoot + "/shaders/skybox/vertex_shader.vs";
+    const std::string SKYBOX_FS_PATH = projectRoot + "/shaders/skybox/fragment_shader.fs";
 
     // glfw: initialize and configure
     // ------------------------------
@@ -158,14 +182,34 @@ int main()
     glEnableVertexAttribArray(1);
     glVertexAttribPointer(1, 3, GL_FLOAT, GL_FALSE, 6 * sizeof(float), (void *)(3 * sizeof(float)));
 
-    std::cout << std::endl;
-    fileLoader.chooseObject();
-    std::cout << std::endl;
+    if (SHOW_CONTEXT_MENU)
+    {
+        std::cout << std::endl;
 
-    fileLoader.chooseSkybox();
-    std::cout << std::endl;
+        if (shouldLoadObj)
+        {
+            shouldLoadObj = false;
+            fileLoader.chooseObject();
+            std::cout << std::endl;
+        }
+
+        if (shouldLoadSkybox)
+        {
+            shouldLoadSkybox = false;
+            fileLoader.chooseSkybox();
+            std::cout << std::endl;
+        }
+
+        std::cout << "Model and skybox loaded - rendering scene...\n\n";
+
+        std::cout << "Press:" << std::endl;
+        std::cout << "0: to load different model" << std::endl;
+        std::cout << "1: to load different skybox" << std::endl;
+        std::cout << "2: to load different model and skybox" << std::endl;
+        std::cout << "3 or ESC: to shutdown the program" << std::endl;
+    }
+
     Model ourModel(std::filesystem::path(fileLoader.chosenObjectPath));
-
     unsigned int cubemapTexture = loadCubemap(getFaces(fileLoader.chosenSkyboxPath));
     Skybox skybox(skyboxShader, cubemapTexture);
 
@@ -223,16 +267,45 @@ int main()
     glDeleteBuffers(1, &cubeVBO);
     skybox.deallocate();
     glfwTerminate();
-    return 0;
 }
 
 // process all input: query GLFW whether relevant keys are pressed/released this frame and react accordingly
 // ---------------------------------------------------------------------------------------------------------
 void processInput(GLFWwindow *window)
 {
-    if (glfwGetKey(window, GLFW_KEY_ESCAPE) == GLFW_PRESS)
+    // Exit program
+    if (glfwGetKey(window, GLFW_KEY_ESCAPE) == GLFW_PRESS || glfwGetKey(window, GLFW_KEY_3) == GLFW_PRESS)
+    {
+        shouldExistFlag = true;
         glfwSetWindowShouldClose(window, true);
+    }
 
+    // Reload program and load model only
+    if (glfwGetKey(window, GLFW_KEY_0) == GLFW_PRESS)
+    {
+        shouldLoadObj = true;
+        glfwSetWindowShouldClose(window, true);
+        std::cout << "\nProgram reloaded!\n";
+    }
+
+    // Reload program and load skybox only
+    if (glfwGetKey(window, GLFW_KEY_1) == GLFW_PRESS)
+    {
+        shouldLoadSkybox = true;
+        glfwSetWindowShouldClose(window, true);
+        std::cout << "\nProgram reloaded!\n";
+    }
+
+    // Reload program and load model and skybox
+    if (glfwGetKey(window, GLFW_KEY_2) == GLFW_PRESS)
+    {
+        shouldLoadSkybox = true;
+        shouldLoadObj = true;
+        glfwSetWindowShouldClose(window, true);
+        std::cout << "\nProgram reloaded!\n";
+    }
+
+    // Scene navigation
     if (glfwGetKey(window, GLFW_KEY_W) == GLFW_PRESS)
         camera.ProcessKeyboard(FORWARD, deltaTime);
     if (glfwGetKey(window, GLFW_KEY_S) == GLFW_PRESS)

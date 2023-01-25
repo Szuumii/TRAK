@@ -2,6 +2,7 @@
 #include <filesystem>
 #include <string>
 #include <vector>
+#include <set>
 
 namespace fs = std::filesystem;
 
@@ -19,6 +20,7 @@ public:
 
     std::string chosenObjectPath;
     std::string chosenSkyboxPath;
+    std::vector<std::string> chosenSkyboxPaths;
 
     float chosenRefractionIndex = 1.5;
 
@@ -63,6 +65,25 @@ public:
         return filepaths.at(chosen_index);
     }
 
+    std::set<std::string> getPathsFromDir(std::string dir)
+    {
+        std::string path = dir;
+        int index = 0;
+        std::set<std::string> sorted_by_name;
+        for (const auto &entry : fs::directory_iterator(path))
+        {
+            std::string file_path = std::string(entry.path());
+            std::size_t found = file_path.find_last_of("/\\");
+            std::string file_name = file_path.substr(found + 1);
+
+            if (file_name == ".DS_Store")
+                continue;
+
+            sorted_by_name.insert(file_path);
+        }
+        return sorted_by_name;
+    }
+
     std::string chooseObject()
     {
         std::cout << "Choose index of available objects to load:" << std::endl;
@@ -83,6 +104,9 @@ public:
         std::cout << "Loading skybox from " << path << "..." << std::endl;
 
         this->chosenSkyboxPath = path;
+        std::set<std::string>my_set = getPathsFromDir(path);
+        std::vector<std::string> my_vector(my_set.begin(), my_set.end());
+        this->chosenSkyboxPaths = my_vector;
 
         return path;
     }

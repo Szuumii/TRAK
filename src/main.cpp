@@ -19,8 +19,8 @@ const float cameraX = 0.0, cameraY = 2.0, cameraZ = 100.0;
 const float angleXZ = -PI / 2, angleY = PI / 2;
 
 Camera *camera = NULL;
-Skybox* skybox;
-Scene* scene;
+Skybox *skybox;
+Scene *scene;
 FrameBuffer *framebuffer0 = NULL;
 FrameBuffer *framebuffer1 = NULL;
 
@@ -32,54 +32,51 @@ GLuint skyboxProgram;
 float INDEX = 1.333;
 
 const bool SHOW_CONTEXT_MENU = true;
-bool shouldExistFlag = false;
 bool shouldLoadObj = true;
 bool shouldLoadSkybox = true;
 bool shouldChooseRefractionIndex = true;
+
 std::string getProjectRoot();
+
 const std::string PROJECT_ROOT = getProjectRoot();
 FileLoader fileLoader(PROJECT_ROOT);
 
 void exit() {
-	delete framebuffer0;
-	delete framebuffer1;
+    delete framebuffer0;
+    delete framebuffer1;
 
-	delete skybox;
-	delete scene;
-	glutExit();
+    delete skybox;
+    delete scene;
+    glutExit();
 }
 
-void init()
-{
-	Shader::glGenProgramFromFile("back", "src/shaders/back_vs.glsl", NULL, NULL, NULL, "src/shaders/back_fs.glsl");
-	Shader::glGenProgramFromFile("main", "src/shaders/main_vs.glsl", NULL, NULL, NULL, "src/shaders/main_fs.glsl");
-	Shader::glGenProgramFromFile("skybox", "src/shaders/skybox_vs.glsl", NULL, NULL, NULL, "src/shaders/skybox_fs.glsl");
+void init() {
+    Shader::glGenProgramFromFile("back", "src/shaders/back_vs.glsl", NULL, NULL, NULL, "src/shaders/back_fs.glsl");
+    Shader::glGenProgramFromFile("main", "src/shaders/main_vs.glsl", NULL, NULL, NULL, "src/shaders/main_fs.glsl");
+    Shader::glGenProgramFromFile("skybox", "src/shaders/skybox_vs.glsl", NULL, NULL, NULL,
+                                 "src/shaders/skybox_fs.glsl");
 
 
-	if (SHOW_CONTEXT_MENU)
-    {
+    if (SHOW_CONTEXT_MENU) {
         std::cout << std::endl;
 
-        if (shouldLoadObj)
-        {
+        if (shouldLoadObj) {
             shouldLoadObj = false;
             fileLoader.chooseObject();
             std::cout << std::endl;
         }
 
-        if (shouldLoadSkybox)
-        {
+        if (shouldLoadSkybox) {
             shouldLoadSkybox = false;
             fileLoader.chooseSkybox();
             std::cout << std::endl;
         }
 
-        if (shouldChooseRefractionIndex)
-        {
+        if (shouldChooseRefractionIndex) {
             shouldChooseRefractionIndex = false;
             fileLoader.chooseRefractionIndex();
             std::cout << std::endl;
-						INDEX = fileLoader.chosenRefractionIndex;
+            INDEX = fileLoader.chosenRefractionIndex;
         }
 
         std::cout << "Model, skybox and refraction index loaded - rendering scene...\n\n";
@@ -93,185 +90,173 @@ void init()
     }
 
     scene = new Scene(fileLoader.chosenObjectPath);
-		
-    for (auto& word : fileLoader.chosenSkyboxPaths) {
+
+    for (auto &word: fileLoader.chosenSkyboxPaths) {
         std::cout << word << std::endl;
     }
 
-    const char* chosenSkyboxFilename[fileLoader.chosenSkyboxPaths.size()];
+    const char *chosenSkyboxFilename[fileLoader.chosenSkyboxPaths.size()];
     int i = 0;
-    for (auto &filename : fileLoader.chosenSkyboxPaths) {
+    for (auto &filename: fileLoader.chosenSkyboxPaths) {
         cout << filename.c_str();
         chosenSkyboxFilename[i] = filename.c_str();
         i++;
     }
 
-	skybox = new Skybox(fileLoader.chosenSkyboxPaths);
+    skybox = new Skybox(fileLoader.chosenSkyboxPaths);
 
-	camera = new Camera(wndWidth, wndHeight, glm::vec3(cameraX, cameraY, cameraZ), angleXZ, angleY);
+    camera = new Camera(wndWidth, wndHeight, glm::vec3(cameraX, cameraY, cameraZ), angleXZ, angleY);
 
-	framebuffer0 = new FrameBuffer(wndWidth, wndHeight, 2);
-	framebuffer1 = new FrameBuffer(wndWidth, wndHeight, 1);
+    framebuffer0 = new FrameBuffer(wndWidth, wndHeight, 2);
+    framebuffer1 = new FrameBuffer(wndWidth, wndHeight, 1);
 
-	mainProgram = Shader::container["main"];
-	backProgram = Shader::container["back"];
-	skyboxProgram = Shader::container["skybox"];
+    mainProgram = Shader::container["main"];
+    backProgram = Shader::container["back"];
+    skyboxProgram = Shader::container["skybox"];
 
-
-	glClearColor(0, 0, 0, 0);
-	glEnable(GL_DEPTH_TEST);
-	glDisable(GL_CULL_FACE);
-	glEnable(GL_TEXTURE_CUBE_MAP_SEAMLESS);
+    glClearColor(0, 0, 0, 0);
+    glEnable(GL_DEPTH_TEST);
+    glDisable(GL_CULL_FACE);
+    glEnable(GL_TEXTURE_CUBE_MAP_SEAMLESS);
 }
 
-void renderBack(GLuint program)
-{
-	glUseProgram(program);
-	glm::mat4 gWorld = glm::mat4(1.0);
-	glm::mat4 gViewProjectMatrix = camera->GetPerspectiveMatrix()*camera->GetViewMatrix();
+void renderBack(GLuint program) {
+    glUseProgram(program);
+    glm::mat4 gWorld = glm::mat4(1.0);
+    glm::mat4 gViewProjectMatrix = camera->GetPerspectiveMatrix() * camera->GetViewMatrix();
 
-	Shader::setMat4(program, "gWorld", gWorld);
-	Shader::setMat4(program, "gViewProjectMatrix", gViewProjectMatrix);
+    Shader::setMat4(program, "gWorld", gWorld);
+    Shader::setMat4(program, "gViewProjectMatrix", gViewProjectMatrix);
 
-	glActiveTexture(GL_TEXTURE3);
-	glBindTexture(GL_TEXTURE_CUBE_MAP, skybox->getSkybox());
-	Shader::setInt(program, "skybox", 3);
-	scene->RenderScene(program);
+    glActiveTexture(GL_TEXTURE3);
+    glBindTexture(GL_TEXTURE_CUBE_MAP, skybox->getSkybox());
+    Shader::setInt(program, "skybox", 3);
+    scene->RenderScene(program);
 }
 
-void render(GLuint program)
-{
-	glUseProgram(program);
-	glm::mat4 gWorld = glm::mat4(1.0);
-	glm::mat4 gViewProjectMatrix = camera->GetPerspectiveMatrix()*camera->GetViewMatrix();
-	glm::vec3 EyePosition = camera->GetCameraPos();
+void render(GLuint program) {
+    glUseProgram(program);
+    glm::mat4 gWorld = glm::mat4(1.0);
+    glm::mat4 gViewProjectMatrix = camera->GetPerspectiveMatrix() * camera->GetViewMatrix();
+    glm::vec3 EyePosition = camera->GetCameraPos();
 
-	Shader::setMat4(program, "gWorld", gWorld);
-	Shader::setMat4(program, "gViewProjectMatrix", gViewProjectMatrix);
-	Shader::setVec3(program, "EyePosition", EyePosition);
-	Shader::setFloat(program, "index", INDEX);
+    Shader::setMat4(program, "gWorld", gWorld);
+    Shader::setMat4(program, "gViewProjectMatrix", gViewProjectMatrix);
+    Shader::setVec3(program, "EyePosition", EyePosition);
+    Shader::setFloat(program, "index", INDEX);
 
-	glActiveTexture(GL_TEXTURE0);
-	glBindTexture(GL_TEXTURE_2D, framebuffer0->GetColorTexture(0));
-	Shader::setInt(program, "backWorldPos", 0);
+    glActiveTexture(GL_TEXTURE0);
+    glBindTexture(GL_TEXTURE_2D, framebuffer0->GetColorTexture(0));
+    Shader::setInt(program, "backWorldPos", 0);
 
-	glActiveTexture(GL_TEXTURE1);
-	glBindTexture(GL_TEXTURE_2D, framebuffer0->GetColorTexture(1));
-	Shader::setInt(program, "backWorldNorm", 1);
+    glActiveTexture(GL_TEXTURE1);
+    glBindTexture(GL_TEXTURE_2D, framebuffer0->GetColorTexture(1));
+    Shader::setInt(program, "backWorldNorm", 1);
 
-	glActiveTexture(GL_TEXTURE3);
-	glBindTexture(GL_TEXTURE_CUBE_MAP, skybox->getSkybox());
-	Shader::setInt(program, "skybox", 3);
+    glActiveTexture(GL_TEXTURE3);
+    glBindTexture(GL_TEXTURE_CUBE_MAP, skybox->getSkybox());
+    Shader::setInt(program, "skybox", 3);
 
-	scene->RenderScene(program);
+    scene->RenderScene(program);
 }
 
-void display()
-{
-	glDepthFunc(GL_GREATER);
-	glClearDepth(0);
-	framebuffer0->Begin();
-	renderBack(backProgram);
-	framebuffer0->End();
-	glClearDepth(1);
-	glDepthFunc(GL_LESS);
+void display() {
+    glDepthFunc(GL_GREATER);
+    glClearDepth(0);
+    framebuffer0->Begin();
+    renderBack(backProgram);
+    framebuffer0->End();
+    glClearDepth(1);
+    glDepthFunc(GL_LESS);
 
-	framebuffer1->Begin();
-	render(mainProgram);
+    framebuffer1->Begin();
+    render(mainProgram);
 
-	mat4 gViewProjectMatrix = camera->GetPerspectiveMatrix()*mat4(mat3(camera->GetViewMatrix()));
+    mat4 gViewProjectMatrix = camera->GetPerspectiveMatrix() * mat4(mat3(camera->GetViewMatrix()));
 
-	glUseProgram(skyboxProgram);
-	Shader::setMat4(skyboxProgram, "gViewProjectMatrix", gViewProjectMatrix);
-	skybox->Render(skyboxProgram);
-	framebuffer1->Bilt(0);
+    glUseProgram(skyboxProgram);
+    Shader::setMat4(skyboxProgram, "gViewProjectMatrix", gViewProjectMatrix);
+    skybox->Render(skyboxProgram);
+    framebuffer1->Bilt(0);
 
-	glutSwapBuffers();
+    glutSwapBuffers();
 
 }
 
-void reshape(int width, int height)
-{
-	glViewport(0, 0, width, height);
+void reshape(int width, int height) {
+    glViewport(0, 0, width, height);
 }
 
-void kbdown(unsigned char key, int x, int y)
-{
-		switch (key)
-		{
-			case 'w': camera->Move(1);
-				break;
-			case 'a': camera->MoveXZ_LR(1);
-				break;
-			case 's': camera->Move(-1);
-				break;
-			case 'd': camera->MoveXZ_LR(-1);
-				break;
-			case 'z': INDEX += 0.01;
-				break;
-			case 'x': INDEX -= 0.01;
-				break;
-			case 'e':
-				exit();
-			break;
-		}
+void keyboardFunc(unsigned char key, int x, int y) {
+    switch (key) {
+        case 'w':
+            camera->Move(1);
+            break;
+        case 'a':
+            camera->MoveXZ_LR(1);
+            break;
+        case 's':
+            camera->Move(-1);
+            break;
+        case 'd':
+            camera->MoveXZ_LR(-1);
+            break;
+        case 'z':
+            INDEX += 0.01;
+            break;
+        case 'x':
+            INDEX -= 0.01;
+            break;
+        case 'e':
+            exit();
+            break;
+    }
 }
 
-void mouseButtonDown(int button, int state, int mouseX, int mouseY)
-{
-
-		if ((button == GLUT_LEFT_BUTTON) && (state == GLUT_DOWN))
-		{
-			camera->SetMousePos(mouseX, mouseY);
-		}
-		else if ((button == GLUT_LEFT_BUTTON) && (state == GLUT_UP))
-		{
-			camera->SetMousePos(-1, -1);
-		}
-
-}
-void mouseActiveMove(int mouseX, int mouseY)
-{
-
-		camera->OnMouseMove(mouseX, mouseY);
-
+void mouseButtonFunc(int button, int state, int mouseX, int mouseY) {
+    camera->OnMouseMove(mouseX, mouseY);
+    camera->SetMousePos(mouseX, mouseY);
+    if ((state == GLUT_DOWN)) {
+        camera->SetMousePos(mouseX, mouseY);
+    } else if ((state == GLUT_UP)) {
+        camera->SetMousePos(-1, -1);
+    }
 }
 
-int main(int argc, char **argv)
-{
-	glutInit(&argc, argv);
-	glutInitDisplayMode(GLUT_DOUBLE | GLUT_RGBA | GLUT_DEPTH);
-	glutInitWindowSize(wndWidth, wndHeight);
-	glutInitContextVersion(4, 4);
-	glutInitContextProfile(GLUT_CORE_PROFILE);
-	glutCreateWindow("trak-projekt");
-	glutCreateMenu(NULL);
-	glewExperimental = true;
-
-	if (glewInit())
-	{
-		std::cerr << "Failed to initialize GLEW" << std::endl;
-		exit(0);
-	}
-
-	printf("OpenGL version supported by this platform (%s): \n", \
-		glGetString(GL_VERSION));
-
-	init();
-	glutDisplayFunc(display);
-	glutReshapeFunc(reshape);
-	glutKeyboardFunc(kbdown);
-	glutMouseFunc(mouseButtonDown);
-	glutMotionFunc(mouseActiveMove);
-	glutIdleFunc(display);
-
-	glutMainLoop();
-	
-	return 0;
+void mouseActiveMove(int mouseX, int mouseY) {
+    camera->OnMouseMove(mouseX, mouseY);
 }
 
-std::string getProjectRoot()
-{
+int main(int argc, char **argv) {
+    glutInit(&argc, argv);
+    glutInitDisplayMode(GLUT_DOUBLE | GLUT_RGBA | GLUT_DEPTH);
+    glutInitWindowSize(wndWidth, wndHeight);
+    glutInitContextVersion(4, 4);
+    glutInitContextProfile(GLUT_CORE_PROFILE);
+    glutCreateWindow("trak-projekt");
+    glutCreateMenu(NULL);
+    glewExperimental = true;
+
+    if (glewInit()) {
+        std::cerr << "Failed to initialize GLEW" << std::endl;
+        exit(0);
+    }
+
+    printf("OpenGL version supported by this platform (%s): \n", \
+        glGetString(GL_VERSION));
+
+    init();
+    glutDisplayFunc(display);
+    glutReshapeFunc(reshape);
+    glutKeyboardFunc(keyboardFunc);
+    glutMouseFunc(mouseButtonFunc);
+    glutMotionFunc(mouseActiveMove);
+    glutIdleFunc(display);
+    glutMainLoop();
+    return 0;
+}
+
+std::string getProjectRoot() {
     char *val = getenv("ROOT");
     return val == NULL ? std::string("./src") : std::string(val);
 }

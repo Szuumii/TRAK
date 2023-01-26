@@ -169,12 +169,6 @@ public:
 	{
 		//garbage collection
 	}
-	/*˵����
-		һ��Scene�����ܶ����Mesh��ÿ��Mesh�и��ԵĲ��ʣ����������Ⱦ��������ʱ��
-		��Ϊÿ��Mesh�鿴�������ţ�Ȼ�����Ǹ�����ţ��ٲ��ʼ��ϣ�һ�����ʵ�map)�в��Ҷ�Ӧ���ʣ�
-		������SetMaterial���ò��ʣ�Ȼ���ٵ���Render������Ⱦ��
-		����SetMaterial����������ת����Ӧ������鿴��ϸ���͡�
-	*/
 	void RenderScene(GLuint program)
 	{
 		int meshesNum = m_Meshes.size();
@@ -332,7 +326,6 @@ private:
                             m_Meshes[i].Distance[j] = v.z;
                     }
                 }
-                //cout << "v: " << org.x << "," << org.y << "," << org.z << "   n:" << dir.x << "," << dir.y << "," << dir.z << "   distance[" << j << "]: " << m_Meshes[i].Distance[j] << endl;
             }
         }
     }

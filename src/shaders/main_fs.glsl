@@ -4,19 +4,15 @@ in vec3 Position_FS_in;
 in vec3 Normal_FS_in;
 in vec2 Texcoord_FS_in;
 in float Distance_FS_in;
+
 layout(location = 0) out vec4 FragColor;
+
 uniform float index;
 uniform vec3 EyePosition;
 uniform mat4 gViewProjectMatrix;
 uniform sampler2D backWorldPos;
 uniform sampler2D backWorldNorm;
 uniform samplerCube skybox;
-struct light{
-	int type;
-	vec3 position;
-	vec3 color;
-	float fade;
-};
 
 void main(void)
 {
@@ -52,10 +48,6 @@ void main(void)
 	vec3 ProjCoord3_P2 = ProjCoord_P2.xyz / ProjCoord_P2.w;
 	vec2 texcoord_P2 = 0.5 * (ProjCoord3_P2.xy + vec2(1.0, 1.0));
 	vec3 N2 = texture(backWorldNorm, texcoord_P2).xyz;
-	if (N2 == vec3(0, 0, 0))
-	{
-		N2 = normalize(T1 - dot(I, T1)* I);
-	}
 
 	N2 = -N2;
 

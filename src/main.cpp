@@ -28,7 +28,6 @@ GLuint mainProgram;
 GLuint backProgram;
 GLuint skyboxProgram;
 
-//parameters
 float INDEX = 1.333;
 
 const bool SHOW_CONTEXT_MENU = true;

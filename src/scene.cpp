@@ -8,6 +8,8 @@
 using namespace std;
 using namespace glm;
 
+// w większości standardowy OpenGLowy boilerplate
+
 class Timer;
 class Mesh
 {
@@ -43,24 +45,18 @@ public:
         glGenBuffers(2, Buffers);
         glBindBuffer(GL_ARRAY_BUFFER, Buffers[0]);
         glBufferData(GL_ARRAY_BUFFER, VSize + NSize + TSize + DSize, NULL, GL_STATIC_DRAW);
-        //glBufferData(GL_ARRAY_BUFFER,VSize+NSize+TSize+TGSize+BTGSize,NULL,GL_STATIC_DRAW);
         glBufferSubData(GL_ARRAY_BUFFER, 0, VSize, (const void*)&Vertices[0]);
         glBufferSubData(GL_ARRAY_BUFFER, VSize, NSize, (const void*)&Normals[0]);
         glBufferSubData(GL_ARRAY_BUFFER, VSize + NSize, TSize, (const void*)&TextureCoords[0]);
         glBufferSubData(GL_ARRAY_BUFFER, VSize + NSize + TSize, DSize, (const void*)&Distance[0]);
-        //glBufferSubData(GL_ARRAY_BUFFER,VSize+NSize+TSize,TGSize,(const void*)&Mesh.Tangents[0]);
-        //glBufferSubData(GL_ARRAY_BUFFER,VSize+NSize+TSize+TGSize,BTGSize,(const void*)&Mesh.Bitangents[0]);
         glVertexAttribPointer(0, 3, GL_FLOAT, GL_FALSE, 0, (const GLvoid*)0);
         glVertexAttribPointer(1, 3, GL_FLOAT, GL_FALSE, 0, (const GLvoid*)VSize);
         glVertexAttribPointer(2, 2, GL_FLOAT, GL_FALSE, 0, (const GLvoid*)(VSize + NSize));
         glVertexAttribPointer(3, 1, GL_FLOAT, GL_FALSE, 0, (const GLvoid*)(VSize + NSize + TSize));
-        //glVertexAttribPointer(3,3,GL_FLOAT,GL_FALSE,0,(const GLvoid*)(VSize+NSize+TSize));
-        //glVertexAttribPointer(4,3,GL_FLOAT,GL_FALSE,0,(const GLvoid*)(VSize+NSize+TSize+TGSize));
         glEnableVertexAttribArray(0);
         glEnableVertexAttribArray(1);
         glEnableVertexAttribArray(2);
         glEnableVertexAttribArray(3);
-        //glEnableVertexAttribArray(4);
         glBindBuffer(GL_ELEMENT_ARRAY_BUFFER, Buffers[1]);
         glBufferData(GL_ELEMENT_ARRAY_BUFFER, ISize, (const void*)&Indices[0], GL_STATIC_DRAW);
 
@@ -82,22 +78,16 @@ public:
         GLuint NSize = norms.size() * 4 * sizeof(GLfloat);
         GLuint ISize = idxs.size() * 4 * sizeof(GLuint);
         cout << "size: " << verts.size() << "," << norms.size() << "," << idxs.size() << endl;
-        //cout << "size: " << VSize << "," << NSize << "," << ISize << endl;
         glGenBuffers(3, GPUVBO);
-        //ver
         glBindBuffer(GL_SHADER_STORAGE_BUFFER, GPUVBO[0]);
         glBufferData(GL_SHADER_STORAGE_BUFFER, VSize, (const GLvoid*)&verts[0], GL_STATIC_COPY);
         glBindBufferBase(GL_SHADER_STORAGE_BUFFER, 0, GPUVBO[0]);
-        //normal
         glBindBuffer(GL_SHADER_STORAGE_BUFFER, GPUVBO[1]);
         glBufferData(GL_SHADER_STORAGE_BUFFER, NSize, (const GLvoid*)&norms[0], GL_STATIC_COPY);
         glBindBufferBase(GL_SHADER_STORAGE_BUFFER, 1, GPUVBO[1]);
-        //indices
         glBindBuffer(GL_SHADER_STORAGE_BUFFER, GPUVBO[2]);
         glBufferData(GL_SHADER_STORAGE_BUFFER, ISize, (const GLvoid*)&idxs[0], GL_STATIC_COPY);
         glBindBufferBase(GL_SHADER_STORAGE_BUFFER, 2, GPUVBO[2]);
-        //bind
-
         return true;
     }
 	void Render()
@@ -126,7 +116,6 @@ public:
         glUniform3fv(glGetUniformLocation(program, "Kd"), 1, Kd);
         glUniform3fv(glGetUniformLocation(program, "Ks"), 1, Ks);
         glUniform1f(glGetUniformLocation(program, "Shininess"), Shininess);
-        //glUniform1f(glGetUniformLocation(program, "Opacity"), Opacity)
 
         if (diffuseTex.size() > 0 && m_Textures.find(diffuseTex) != m_Textures.end())
         {
@@ -162,12 +151,11 @@ public:
 	Scene(string Filename)
 	{
 		LoadFromFile(Filename);
-		calcNormal();
+		calculateNormalDistances();
 		GenOGLMeshes();
 	}
 	~Scene()
 	{
-		//garbage collection
 	}
 	void RenderScene(GLuint program)
 	{
@@ -244,7 +232,6 @@ private:
         {
             const aiFace Face = paiMesh->mFaces[i];
             if (Face.mNumIndices != 3) continue;
-            //assert(Face.mNumIndices == 3);
             m_Meshes[Index].Indices.push_back(vec3(Face.mIndices[0], Face.mIndices[1], Face.mIndices[2]));
         }
     }
@@ -297,7 +284,7 @@ private:
         }
         return true;
     }
-	void calcNormal()
+	void calculateNormalDistances()
     {
         for (int i = 0; i < m_Meshes.size(); i++)
         {
@@ -329,6 +316,35 @@ private:
             }
         }
     }
+
+    // void calculateNormalDistances()
+    // {
+    //     for (int j = 0; j < this->vertices.size(); j++)
+    //     {
+    //         vec3 P1 = this->vertices[j].Position;
+    //         vec3 N1 = this->vertices[j].Normal;
+
+    //         for (int k = 0; k < this->vertices.size(); k++)
+    //         {
+    //             vec3 P2 = this->vertices[k].Position;
+    //             if (P2 == P1)
+    //                 continue;
+
+    //             if (checkIsOnNormalExtension(P1, N1, P2))
+    //             {
+    //                 this->vertices[j].NormalDistance = distance(P1, P2);
+    //             }
+    //         }
+    //     }
+    // }
+
+    // bool checkIsOnNormalExtension(glm::vec3 P1, glm::vec3 N1, glm::vec3 P2)
+    // {
+    //     float allowedError = 1e-3;
+    //     glm::vec3 P1P2 = P2 - P1;
+    //     float crossProduct = glm::cross(P1P2, N1);
+    //     return glm::abs(crossProduct) < 1e-6;
+    // }
 	bool GenOGLMeshes()
     {
         bool res = true;

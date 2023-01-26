@@ -16,43 +16,43 @@ uniform samplerCube skybox;
 
 void main(void)
 {
-	vec4 ProjCoord = gViewProjectMatrix * vec4(Position_FS_in, 1.0);
-	vec3 ProjCoord3 = ProjCoord.xyz / ProjCoord.w;
-	vec2 texcoord = 0.5 * (ProjCoord3.xy + vec2(1.0, 1.0));
+	// rzutowanie P1 na screenspace
+	vec4 P1 = gViewProjectMatrix * vec4(Position_FS_in, 1.0);
+	vec3 P1vec3 = P1.xyz / P1.w;
+	vec2 backPointCoord = 0.5 * (P1vec3.xy + vec2(1.0, 1.0));
 
 	float ratio = 1.00 / index;
-	vec3 N = normalize(Normal_FS_in);
-	vec3 I = normalize(Position_FS_in - EyePosition);
+	vec3 N1 = normalize(Normal_FS_in);
+	vec3 V = normalize(Position_FS_in - EyePosition);
 
-	vec3 T1 = refract(I, N, ratio);
+	// pierwsza refrakcja
+	vec3 T1 = refract(V, N1, ratio);
 	T1 = normalize(T1);
 
-	float T1sin_in = length(cross(I, N));
-	float T1theta_in = abs(asin(T1sin_in));
-	float T1sin_out = T1sin_in * ratio;
-	float T1theta_out = abs(asin(T1sin_out));
-
-	vec3 backPoint = texture(backWorldPos, texcoord).xyz;
-
-	if (backPoint == vec3(0, 0, 0))
-	{
-		backPoint = Position_FS_in;
-	}
+	// wyliczanie P2 (z tyłu bryły)
+	float thetaI = abs(asin(length(cross(V, N1))));
+	float thetaT = abs(asin(length(cross(V, N1)) * ratio));
+	vec3 backPoint = texture(backWorldPos, backPointCoord).xyz;
 	float dv = distance(backPoint, Position_FS_in);
 	float dn = Distance_FS_in;
-	float ratio_theta = T1theta_out / T1theta_in;
-	float d = ratio_theta*dv + (1 - ratio_theta)*dn;
+	float thetaRatio = thetaT / thetaI;
+
+	// interpolacja odległości do punktu
+	float d = thetaRatio*dv + (1 - thetaRatio)*dn;
 	vec3 P2 = Position_FS_in + d * T1;
 
-	vec4 ProjCoord_P2 = gViewProjectMatrix * vec4(P2, 1.0);
-	vec3 ProjCoord3_P2 = ProjCoord_P2.xyz / ProjCoord_P2.w;
-	vec2 texcoord_P2 = 0.5 * (ProjCoord3_P2.xy + vec2(1.0, 1.0));
-	vec3 N2 = texture(backWorldNorm, texcoord_P2).xyz;
+	// rzutowanie P2 na screenspace
+	vec4 projectedP2 = gViewProjectMatrix * vec4(P2, 1.0);
+	vec3 projectedP2vec3 = projectedP2.xyz / projectedP2.w;
+	vec2 normalCoord = 0.5 * (projectedP2vec3.xy + vec2(1.0, 1.0));
+	vec3 N2 = texture(backWorldNorm, normalCoord).xyz;
 
+	// odwrócenie normalnej
 	N2 = -N2;
 
-	vec4 colorR2=vec4(0);
+	// druga refrakcja
+	vec4 colorOut=vec4(0);
 	vec3 T2 = refract(T1, N2, index);
-	colorR2 = texture(skybox, T2);
-	FragColor = colorR2;
+	colorOut = texture(skybox, T2);
+	FragColor = colorOut;
 }

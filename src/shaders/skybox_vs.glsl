@@ -6,6 +6,6 @@ out vec3 tex_coord;
 void main(void)
 {
 	tex_coord = in_position;
-	vec4 tmp = gViewProjectMatrix * vec4(in_position, 1.0);
-	gl_Position = vec4(tmp.xy,tmp.w-0.001,tmp.w);
+	vec4 pos = gViewProjectMatrix * vec4(in_position, 1.0);
+	gl_Position = vec4(pos.xy,pos.w-0.001,pos.w);
 }

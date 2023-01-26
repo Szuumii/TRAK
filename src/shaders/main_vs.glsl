@@ -19,6 +19,5 @@ void main(void)
 	Normal_FS_in = normalize(Normal_FS_in);
 	Texcoord_FS_in = in_texcoord;
 	Distance_FS_in = in_distance;
-
 	gl_Position = gViewProjectMatrix * gWorld * vec4(in_position, 1.0);
 }

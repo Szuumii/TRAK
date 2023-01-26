@@ -1,190 +1,62 @@
-#include <glad/glad.h>
-#include <GLFW/glfw3.h>
-
-#define STB_IMAGE_IMPLEMENTATION
-#include "stb_image.h"
-
-#include <glm/glm.hpp>
-#include <glm/gtc/matrix_transform.hpp>
-#include <glm/gtc/type_ptr.hpp>
-
-#include "./shaders/shader.cpp"
-#include "camera.h"
-#include "model.h"
-#include <filesystem>
-#include "file_loader.h"
-
 #include <iostream>
-#include "skybox.cpp"
-#include <string>
+
+#include "gl/glew.h"
+#include "gl/freeglut.h"
+#include "glm/glm.hpp"
+#include "glm/gtc/matrix_transform.hpp"
+
+#include "file_loader.h"
+#include "shader.cpp"
+#include "skybox.h"
+#include "camera.h"
+#include "scene.cpp"
+#include "frameBuffer.h"
+
+#define PI 3.1415926
+using namespace std;
+const int wndWidth = 1280, wndHeight = 720;
+const float cameraX = 0.0, cameraY = 2.0, cameraZ = 100.0;
+const float angleXZ = -PI / 2, angleY = PI / 2;
+
+Camera *camera = NULL;
+Skybox* skybox;
+Scene* scene;
+FrameBuffer *framebuffer0 = NULL;
+FrameBuffer *framebuffer1 = NULL;
+
+GLuint mainProgram;
+GLuint backProgram;
+GLuint skyboxProgram;
+
+//parameters
+float INDEX = 1.333;
 
 const bool SHOW_CONTEXT_MENU = true;
-
-std::string getProjectRoot();
-
-const std::string PROJECT_ROOT = getProjectRoot();
-
-void framebuffer_size_callback(GLFWwindow *window, int width, int height);
-void mouse_callback(GLFWwindow *window, double xpos, double ypos);
-void scroll_callback(GLFWwindow *window, double xoffset, double yoffset);
-void processInput(GLFWwindow *window);
-unsigned int loadTexture(const char *path);
-unsigned int loadCubemap(std::vector<std::string> faces);
-std::vector<std::string> getFaces(std::string);
-int renderScene(std::string);
-
-// settings
-const unsigned int SCR_WIDTH = 1024;
-const unsigned int SCR_HEIGHT = 768;
-
-// camera
-Camera camera(glm::vec3(0.0f, 1.0f, 4.5f));
-float lastX = SCR_WIDTH / 2.0f;
-float lastY = SCR_HEIGHT / 2.0f;
-bool firstMouse = true;
-
-// timing
-float deltaTime = 0.0f; // time between current frame and last frame
-float lastFrame = 0.0f;
-
 bool shouldExistFlag = false;
 bool shouldLoadObj = true;
 bool shouldLoadSkybox = true;
 bool shouldChooseRefractionIndex = true;
-
-// file loader
+std::string getProjectRoot();
+const std::string PROJECT_ROOT = getProjectRoot();
 FileLoader fileLoader(PROJECT_ROOT);
 
-int main()
-{
-    std::cout << "Using project root \"" << PROJECT_ROOT << "\"...\n";
+void exit() {
+	delete framebuffer0;
+	delete framebuffer1;
 
-    if (!SHOW_CONTEXT_MENU)
-    {
-        renderScene(PROJECT_ROOT);
-        return 0;
-    }
-
-    int guard = 0;
-    while (!shouldExistFlag && guard++ < 30)
-    {
-        renderScene(PROJECT_ROOT);
-    }
-
-    return 0;
+	delete skybox;
+	delete scene;
+	glutExit();
 }
 
-int renderScene(std::string projectRoot)
+void init()
 {
-    const std::string VS_PATH = projectRoot + "/shaders/cubemaps/vertex_shader.vs";
-    const std::string FS_PATH = projectRoot + "/shaders/cubemaps/fragment_shader.fs";
-    const std::string SKYBOX_VS_PATH = projectRoot + "/shaders/skybox/vertex_shader.vs";
-    const std::string SKYBOX_FS_PATH = projectRoot + "/shaders/skybox/fragment_shader.fs";
+	Shader::glGenProgramFromFile("back", "src/shaders/back_vs.glsl", NULL, NULL, NULL, "src/shaders/back_fs.glsl");
+	Shader::glGenProgramFromFile("main", "src/shaders/main_vs.glsl", NULL, NULL, NULL, "src/shaders/main_fs.glsl");
+	Shader::glGenProgramFromFile("skybox", "src/shaders/skybox_vs.glsl", NULL, NULL, NULL, "src/shaders/skybox_fs.glsl");
 
-    // glfw: initialize and configure
-    // ------------------------------
-    glfwInit();
-    glfwWindowHint(GLFW_CONTEXT_VERSION_MAJOR, 3);
-    glfwWindowHint(GLFW_CONTEXT_VERSION_MINOR, 3);
-    glfwWindowHint(GLFW_OPENGL_PROFILE, GLFW_OPENGL_CORE_PROFILE);
 
-#ifdef __APPLE__
-    glfwWindowHint(GLFW_OPENGL_FORWARD_COMPAT, GL_TRUE);
-#endif
-
-    // glfw window creation
-    // --------------------
-    GLFWwindow *window = glfwCreateWindow(SCR_WIDTH, SCR_HEIGHT, "LearnOpenGL", NULL, NULL);
-    if (window == NULL)
-    {
-        std::cout << "Failed to create GLFW window" << std::endl;
-        glfwTerminate();
-        return -1;
-    }
-    glfwMakeContextCurrent(window);
-    glfwSetFramebufferSizeCallback(window, framebuffer_size_callback);
-    glfwSetCursorPosCallback(window, mouse_callback);
-    glfwSetScrollCallback(window, scroll_callback);
-
-    // tell GLFW to capture our mouse
-    glfwSetInputMode(window, GLFW_CURSOR, GLFW_CURSOR_DISABLED);
-
-    // glad: load all OpenGL function pointers
-    // ---------------------------------------
-    if (!gladLoadGLLoader((GLADloadproc)glfwGetProcAddress))
-    {
-        std::cout << "Failed to initialize GLAD" << std::endl;
-        return -1;
-    }
-
-    // configure global opengl state
-    // -----------------------------
-    glEnable(GL_DEPTH_TEST);
-
-    // build and compile shaders
-    // -------------------------
-    Shader shader(VS_PATH.c_str(), FS_PATH.c_str());
-    Shader skyboxShader(SKYBOX_VS_PATH.c_str(), SKYBOX_FS_PATH.c_str());
-
-    // set up vertex data (and buffer(s)) and configure vertex attributes
-    // ------------------------------------------------------------------
-    float cubeVertices[] = {
-        // positions          // normals
-        -0.5f, -0.5f, -0.5f, 0.0f, 0.0f, -1.0f,
-        0.5f, -0.5f, -0.5f, 0.0f, 0.0f, -1.0f,
-        0.5f, 0.5f, -0.5f, 0.0f, 0.0f, -1.0f,
-        0.5f, 0.5f, -0.5f, 0.0f, 0.0f, -1.0f,
-        -0.5f, 0.5f, -0.5f, 0.0f, 0.0f, -1.0f,
-        -0.5f, -0.5f, -0.5f, 0.0f, 0.0f, -1.0f,
-
-        -0.5f, -0.5f, 0.5f, 0.0f, 0.0f, 1.0f,
-        0.5f, -0.5f, 0.5f, 0.0f, 0.0f, 1.0f,
-        0.5f, 0.5f, 0.5f, 0.0f, 0.0f, 1.0f,
-        0.5f, 0.5f, 0.5f, 0.0f, 0.0f, 1.0f,
-        -0.5f, 0.5f, 0.5f, 0.0f, 0.0f, 1.0f,
-        -0.5f, -0.5f, 0.5f, 0.0f, 0.0f, 1.0f,
-
-        -0.5f, 0.5f, 0.5f, -1.0f, 0.0f, 0.0f,
-        -0.5f, 0.5f, -0.5f, -1.0f, 0.0f, 0.0f,
-        -0.5f, -0.5f, -0.5f, -1.0f, 0.0f, 0.0f,
-        -0.5f, -0.5f, -0.5f, -1.0f, 0.0f, 0.0f,
-        -0.5f, -0.5f, 0.5f, -1.0f, 0.0f, 0.0f,
-        -0.5f, 0.5f, 0.5f, -1.0f, 0.0f, 0.0f,
-
-        0.5f, 0.5f, 0.5f, 1.0f, 0.0f, 0.0f,
-        0.5f, 0.5f, -0.5f, 1.0f, 0.0f, 0.0f,
-        0.5f, -0.5f, -0.5f, 1.0f, 0.0f, 0.0f,
-        0.5f, -0.5f, -0.5f, 1.0f, 0.0f, 0.0f,
-        0.5f, -0.5f, 0.5f, 1.0f, 0.0f, 0.0f,
-        0.5f, 0.5f, 0.5f, 1.0f, 0.0f, 0.0f,
-
-        -0.5f, -0.5f, -0.5f, 0.0f, -1.0f, 0.0f,
-        0.5f, -0.5f, -0.5f, 0.0f, -1.0f, 0.0f,
-        0.5f, -0.5f, 0.5f, 0.0f, -1.0f, 0.0f,
-        0.5f, -0.5f, 0.5f, 0.0f, -1.0f, 0.0f,
-        -0.5f, -0.5f, 0.5f, 0.0f, -1.0f, 0.0f,
-        -0.5f, -0.5f, -0.5f, 0.0f, -1.0f, 0.0f,
-
-        -0.5f, 0.5f, -0.5f, 0.0f, 1.0f, 0.0f,
-        0.5f, 0.5f, -0.5f, 0.0f, 1.0f, 0.0f,
-        0.5f, 0.5f, 0.5f, 0.0f, 1.0f, 0.0f,
-        0.5f, 0.5f, 0.5f, 0.0f, 1.0f, 0.0f,
-        -0.5f, 0.5f, 0.5f, 0.0f, 1.0f, 0.0f,
-        -0.5f, 0.5f, -0.5f, 0.0f, 1.0f, 0.0f};
-
-    // cube VAO
-    unsigned int cubeVAO, cubeVBO;
-    glGenVertexArrays(1, &cubeVAO);
-    glGenBuffers(1, &cubeVBO);
-    glBindVertexArray(cubeVAO);
-    glBindBuffer(GL_ARRAY_BUFFER, cubeVBO);
-    glBufferData(GL_ARRAY_BUFFER, sizeof(cubeVertices), &cubeVertices, GL_STATIC_DRAW);
-    glEnableVertexAttribArray(0);
-    glVertexAttribPointer(0, 3, GL_FLOAT, GL_FALSE, 6 * sizeof(float), (void *)0);
-    glEnableVertexAttribArray(1);
-    glVertexAttribPointer(1, 3, GL_FLOAT, GL_FALSE, 6 * sizeof(float), (void *)(3 * sizeof(float)));
-
-    if (SHOW_CONTEXT_MENU)
+	if (SHOW_CONTEXT_MENU)
     {
         std::cout << std::endl;
 
@@ -207,6 +79,7 @@ int renderScene(std::string projectRoot)
             shouldChooseRefractionIndex = false;
             fileLoader.chooseRefractionIndex();
             std::cout << std::endl;
+						INDEX = fileLoader.chosenRefractionIndex;
         }
 
         std::cout << "Model, skybox and refraction index loaded - rendering scene...\n\n";
@@ -219,254 +92,186 @@ int renderScene(std::string projectRoot)
         std::cout << "4 or ESC: to shutdown the program" << std::endl;
     }
 
-    Model ourModel(std::filesystem::path(fileLoader.chosenObjectPath));
-    unsigned int cubemapTexture = loadCubemap(getFaces(fileLoader.chosenSkyboxPath));
-    Skybox skybox(skyboxShader, cubemapTexture);
-    float refractionIndex = fileLoader.chosenRefractionIndex; // TODO: use this
-
-    // render loop
-    // -----------
-    while (!glfwWindowShouldClose(window))
-    {
-        // per-frame time logic
-        // --------------------
-        float currentFrame = static_cast<float>(glfwGetTime());
-        deltaTime = currentFrame - lastFrame;
-        lastFrame = currentFrame;
-
-        // input
-        // -----
-        processInput(window);
-
-        // render
-        // ------
-        glClearColor(0.1f, 0.1f, 0.1f, 1.0f);
-        glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
-
-        // draw scene as normal
-        shader.use();
-        glm::mat4 model = glm::mat4(1.0f);
-        // model = glm::scale(model, glm::vec3(0.01f, 0.01f, 0.01f));
-        glm::mat4 view = camera.GetViewMatrix();
-        glm::mat4 projection = glm::perspective(glm::radians(camera.Zoom), (float)SCR_WIDTH / (float)SCR_HEIGHT, 0.1f, 100.0f);
-        shader.setMat4("model", model);
-        shader.setMat4("view", view);
-        shader.setMat4("projection", projection);
-        shader.setVec3("cameraPos", camera.Position);
-
-        ourModel.Draw(shader);
-
-        // draw skybox as last
-        glDepthFunc(GL_LEQUAL); // change depth function so depth test passes when values are equal to depth buffer's content
-        skyboxShader.use();
-        view = glm::mat4(glm::mat3(camera.GetViewMatrix())); // remove translation from the view matrix
-        skyboxShader.use();
-        skyboxShader.setMat4("view", view);
-        skyboxShader.setMat4("projection", projection);
-        skybox.draw();
-        glDepthFunc(GL_LESS); // set depth function back to default
-
-        // glfw: swap buffers and poll IO events (keys pressed/released, mouse moved etc.)
-        // -------------------------------------------------------------------------------
-        glfwSwapBuffers(window);
-        glfwPollEvents();
+    scene = new Scene(fileLoader.chosenObjectPath);
+		
+    for (auto& word : fileLoader.chosenSkyboxPaths) {
+        std::cout << word << std::endl;
     }
 
-    // optional: de-allocate all resources once they've outlived their purpose:
-    // ------------------------------------------------------------------------
-    glDeleteVertexArrays(1, &cubeVAO);
-    glDeleteBuffers(1, &cubeVBO);
-    skybox.deallocate();
-    glfwTerminate();
+    const char* chosenSkyboxFilename[fileLoader.chosenSkyboxPaths.size()];
+    int i = 0;
+    for (auto &filename : fileLoader.chosenSkyboxPaths) {
+        cout << filename.c_str();
+        chosenSkyboxFilename[i] = filename.c_str();
+        i++;
+    }
+
+	skybox = new Skybox(fileLoader.chosenSkyboxPaths);
+
+	camera = new Camera(wndWidth, wndHeight, glm::vec3(cameraX, cameraY, cameraZ), angleXZ, angleY);
+
+	framebuffer0 = new FrameBuffer(wndWidth, wndHeight, 2);
+	framebuffer1 = new FrameBuffer(wndWidth, wndHeight, 1);
+
+	mainProgram = Shader::container["main"];
+	backProgram = Shader::container["back"];
+	skyboxProgram = Shader::container["skybox"];
+
+
+	glClearColor(0, 0, 0, 0);
+	glEnable(GL_DEPTH_TEST);
+	glDisable(GL_CULL_FACE);
+	glEnable(GL_TEXTURE_CUBE_MAP_SEAMLESS);
 }
 
-// process all input: query GLFW whether relevant keys are pressed/released this frame and react accordingly
-// ---------------------------------------------------------------------------------------------------------
-void processInput(GLFWwindow *window)
+void renderBack(GLuint program)
 {
-    // Exit program
-    if (glfwGetKey(window, GLFW_KEY_ESCAPE) == GLFW_PRESS || glfwGetKey(window, GLFW_KEY_4) == GLFW_PRESS)
-    {
-        shouldExistFlag = true;
-        glfwSetWindowShouldClose(window, true);
-    }
+	glUseProgram(program);
+	glm::mat4 gWorld = glm::mat4(1.0);
+	glm::mat4 gViewProjectMatrix = camera->GetPerspectiveMatrix()*camera->GetViewMatrix();
 
-    // Reload program and load model only
-    if (glfwGetKey(window, GLFW_KEY_0) == GLFW_PRESS)
-    {
-        shouldLoadObj = true;
-        glfwSetWindowShouldClose(window, true);
-        std::cout << "\nProgram reloaded!\n";
-    }
+	Shader::setMat4(program, "gWorld", gWorld);
+	Shader::setMat4(program, "gViewProjectMatrix", gViewProjectMatrix);
 
-    // Reload program and load skybox only
-    if (glfwGetKey(window, GLFW_KEY_1) == GLFW_PRESS)
-    {
-        shouldLoadSkybox = true;
-        glfwSetWindowShouldClose(window, true);
-        std::cout << "\nProgram reloaded!\n";
-    }
-
-    // Reload program and load model and skybox
-    if (glfwGetKey(window, GLFW_KEY_2) == GLFW_PRESS)
-    {
-        shouldLoadSkybox = true;
-        shouldLoadObj = true;
-        glfwSetWindowShouldClose(window, true);
-        std::cout << "\nProgram reloaded!\n";
-    }
-
-    // Reload program and load refraction index
-    if (glfwGetKey(window, GLFW_KEY_3) == GLFW_PRESS)
-    {
-        shouldChooseRefractionIndex = true;
-        glfwSetWindowShouldClose(window, true);
-        std::cout << "\nProgram reloaded!\n";
-    }
-
-    // Scene navigation
-    if (glfwGetKey(window, GLFW_KEY_W) == GLFW_PRESS)
-        camera.ProcessKeyboard(FORWARD, deltaTime);
-    if (glfwGetKey(window, GLFW_KEY_S) == GLFW_PRESS)
-        camera.ProcessKeyboard(BACKWARD, deltaTime);
-    if (glfwGetKey(window, GLFW_KEY_A) == GLFW_PRESS)
-        camera.ProcessKeyboard(LEFT, deltaTime);
-    if (glfwGetKey(window, GLFW_KEY_D) == GLFW_PRESS)
-        camera.ProcessKeyboard(RIGHT, deltaTime);
+	glActiveTexture(GL_TEXTURE3);
+	glBindTexture(GL_TEXTURE_CUBE_MAP, skybox->getSkybox());
+	Shader::setInt(program, "skybox", 3);
+	scene->RenderScene(program);
 }
 
-// glfw: whenever the window size changed (by OS or user resize) this callback function executes
-// ---------------------------------------------------------------------------------------------
-void framebuffer_size_callback(GLFWwindow *window, int width, int height)
+void render(GLuint program)
 {
-    // make sure the viewport matches the new window dimensions; note that width and
-    // height will be significantly larger than specified on retina displays.
-    glViewport(0, 0, width, height);
+	glUseProgram(program);
+	glm::mat4 gWorld = glm::mat4(1.0);
+	glm::mat4 gViewProjectMatrix = camera->GetPerspectiveMatrix()*camera->GetViewMatrix();
+	glm::vec3 EyePosition = camera->GetCameraPos();
+
+	Shader::setMat4(program, "gWorld", gWorld);
+	Shader::setMat4(program, "gViewProjectMatrix", gViewProjectMatrix);
+	Shader::setVec3(program, "EyePosition", EyePosition);
+	Shader::setFloat(program, "index", INDEX);
+
+	glActiveTexture(GL_TEXTURE0);
+	glBindTexture(GL_TEXTURE_2D, framebuffer0->GetColorTexture(0));
+	Shader::setInt(program, "backWorldPos", 0);
+
+	glActiveTexture(GL_TEXTURE1);
+	glBindTexture(GL_TEXTURE_2D, framebuffer0->GetColorTexture(1));
+	Shader::setInt(program, "backWorldNorm", 1);
+
+	glActiveTexture(GL_TEXTURE3);
+	glBindTexture(GL_TEXTURE_CUBE_MAP, skybox->getSkybox());
+	Shader::setInt(program, "skybox", 3);
+
+	scene->RenderScene(program);
 }
 
-// glfw: whenever the mouse moves, this callback is called
-// -------------------------------------------------------
-void mouse_callback(GLFWwindow *window, double xposIn, double yposIn)
+void display()
 {
-    float xpos = static_cast<float>(xposIn);
-    float ypos = static_cast<float>(yposIn);
+	glDepthFunc(GL_GREATER);
+	glClearDepth(0);
+	framebuffer0->Begin();
+	renderBack(backProgram);
+	framebuffer0->End();
+	glClearDepth(1);
+	glDepthFunc(GL_LESS);
 
-    if (firstMouse)
-    {
-        lastX = xpos;
-        lastY = ypos;
-        firstMouse = false;
-    }
+	framebuffer1->Begin();
+	render(mainProgram);
 
-    float xoffset = xpos - lastX;
-    float yoffset = lastY - ypos; // reversed since y-coordinates go from bottom to top
+	mat4 gViewProjectMatrix = camera->GetPerspectiveMatrix()*mat4(mat3(camera->GetViewMatrix()));
 
-    lastX = xpos;
-    lastY = ypos;
+	glUseProgram(skyboxProgram);
+	Shader::setMat4(skyboxProgram, "gViewProjectMatrix", gViewProjectMatrix);
+	skybox->Render(skyboxProgram);
+	framebuffer1->Bilt(0);
 
-    camera.ProcessMouseMovement(xoffset, yoffset);
+	glutSwapBuffers();
+
 }
 
-// utility function for loading a 2D texture from file
-// ---------------------------------------------------
-unsigned int loadTexture(char const *path)
+void reshape(int width, int height)
 {
-    unsigned int textureID;
-    glGenTextures(1, &textureID);
-
-    int width, height, nrComponents;
-    unsigned char *data = stbi_load(path, &width, &height, &nrComponents, 0);
-    if (data)
-    {
-        GLenum format;
-        if (nrComponents == 1)
-            format = GL_RED;
-        else if (nrComponents == 3)
-            format = GL_RGB;
-        else if (nrComponents == 4)
-            format = GL_RGBA;
-
-        glBindTexture(GL_TEXTURE_2D, textureID);
-        glTexImage2D(GL_TEXTURE_2D, 0, format, width, height, 0, format, GL_UNSIGNED_BYTE, data);
-        glGenerateMipmap(GL_TEXTURE_2D);
-
-        glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_S, GL_REPEAT);
-        glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_T, GL_REPEAT);
-        glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_LINEAR_MIPMAP_LINEAR);
-        glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_LINEAR);
-
-        stbi_image_free(data);
-    }
-    else
-    {
-        std::cout << "Texture failed to load at path: " << path << std::endl;
-        stbi_image_free(data);
-    }
-
-    return textureID;
+	glViewport(0, 0, width, height);
 }
 
-// loads a cubemap texture from 6 individual texture faces
-// order:
-// +X (right)
-// -X (left)
-// +Y (top)
-// -Y (bottom)
-// +Z (front)
-// -Z (back)
-// -------------------------------------------------------
-unsigned int loadCubemap(std::vector<std::string> faces)
+void kbdown(unsigned char key, int x, int y)
 {
-    unsigned int textureID;
-    glGenTextures(1, &textureID);
-    glBindTexture(GL_TEXTURE_CUBE_MAP, textureID);
-
-    int width, height, nrComponents;
-    for (unsigned int i = 0; i < faces.size(); i++)
-    {
-        unsigned char *data = stbi_load(faces[i].c_str(), &width, &height, &nrComponents, 0);
-        if (data)
-        {
-            glTexImage2D(GL_TEXTURE_CUBE_MAP_POSITIVE_X + i, 0, GL_RGB, width, height, 0, GL_RGB, GL_UNSIGNED_BYTE, data);
-            stbi_image_free(data);
-        }
-        else
-        {
-            std::cout << "Cubemap texture failed to load at path: " << faces[i] << std::endl;
-            stbi_image_free(data);
-        }
-    }
-    glTexParameteri(GL_TEXTURE_CUBE_MAP, GL_TEXTURE_MIN_FILTER, GL_LINEAR);
-    glTexParameteri(GL_TEXTURE_CUBE_MAP, GL_TEXTURE_MAG_FILTER, GL_LINEAR);
-    glTexParameteri(GL_TEXTURE_CUBE_MAP, GL_TEXTURE_WRAP_S, GL_CLAMP_TO_EDGE);
-    glTexParameteri(GL_TEXTURE_CUBE_MAP, GL_TEXTURE_WRAP_T, GL_CLAMP_TO_EDGE);
-    glTexParameteri(GL_TEXTURE_CUBE_MAP, GL_TEXTURE_WRAP_R, GL_CLAMP_TO_EDGE);
-
-    return textureID;
+		switch (key)
+		{
+			case 'w': camera->Move(1);
+				break;
+			case 'a': camera->MoveXZ_LR(1);
+				break;
+			case 's': camera->Move(-1);
+				break;
+			case 'd': camera->MoveXZ_LR(-1);
+				break;
+			case 'z': INDEX += 0.01;
+				break;
+			case 'x': INDEX -= 0.01;
+				break;
+			case 'e':
+				exit();
+			break;
+		}
 }
 
-// glfw: whenever the mouse scroll wheel scrolls, this callback is called
-// ----------------------------------------------------------------------
-void scroll_callback(GLFWwindow *window, double xoffset, double yoffset)
+void mouseButtonDown(int button, int state, int mouseX, int mouseY)
 {
-    camera.ProcessMouseScroll(static_cast<float>(yoffset));
+
+		if ((button == GLUT_LEFT_BUTTON) && (state == GLUT_DOWN))
+		{
+			camera->SetMousePos(mouseX, mouseY);
+		}
+		else if ((button == GLUT_LEFT_BUTTON) && (state == GLUT_UP))
+		{
+			camera->SetMousePos(-1, -1);
+		}
+
+}
+void mouseActiveMove(int mouseX, int mouseY)
+{
+
+		camera->OnMouseMove(mouseX, mouseY);
+
 }
 
-std::vector<std::string> getFaces(std::string dir)
+int main(int argc, char **argv)
 {
-    std::vector<std::string> faces{
-        std::filesystem::path(dir + string("/right.jpg")),
-        std::filesystem::path(dir + string("/left.jpg")),
-        std::filesystem::path(dir + string("/top.jpg")),
-        std::filesystem::path(dir + string("/bottom.jpg")),
-        std::filesystem::path(dir + string("/front.jpg")),
-        std::filesystem::path(dir + string("/back.jpg")),
-    };
-    return faces;
+	glutInit(&argc, argv);
+	glutInitDisplayMode(GLUT_DOUBLE | GLUT_RGBA | GLUT_DEPTH);
+	glutInitWindowSize(wndWidth, wndHeight);
+	glutInitContextVersion(4, 4);
+	glutInitContextProfile(GLUT_CORE_PROFILE);
+	glutCreateWindow("trak-projekt");
+	glutCreateMenu(NULL);
+	glewExperimental = true;
+
+	if (glewInit())
+	{
+		std::cerr << "Failed to initialize GLEW" << std::endl;
+		exit(0);
+	}
+
+	printf("OpenGL version supported by this platform (%s): \n", \
+		glGetString(GL_VERSION));
+
+	init();
+	glutDisplayFunc(display);
+	glutReshapeFunc(reshape);
+	glutKeyboardFunc(kbdown);
+	glutMouseFunc(mouseButtonDown);
+	glutMotionFunc(mouseActiveMove);
+	glutIdleFunc(display);
+
+	glutMainLoop();
+	
+	return 0;
 }
 
 std::string getProjectRoot()
 {
     char *val = getenv("ROOT");
-    return val == NULL ? std::string("src") : std::string(val);
+    return val == NULL ? std::string("./src") : std::string(val);
 }

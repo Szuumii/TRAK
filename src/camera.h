@@ -1,130 +1,155 @@
-#ifndef CAMERA_H
-#define CAMERA_H
-
-#include <glad/glad.h>
-#include <glm/glm.hpp>
-#include <glm/gtc/matrix_transform.hpp>
-
-#include <vector>
-
-// Defines several possible options for camera movement. Used as abstraction to stay away from window-system specific input methods
-enum Camera_Movement {
-    FORWARD,
-    BACKWARD,
-    LEFT,
-    RIGHT
-};
-
-// Default camera values
-const float YAW         = -90.0f;
-const float PITCH       =  0.0f;
-const float SPEED       =  2.5f;
-const float SENSITIVITY =  0.1f;
-const float ZOOM        =  45.0f;
-
-
-// An abstract camera class that processes input and calculates the corresponding Euler Angles, Vectors and Matrices for use in OpenGL
+#ifndef _CAMERA_H_
+#define _CAMERA_H_
+#include "inc.h"
+#include <iostream>
+using namespace std;
+using namespace glm;
 class Camera
 {
 public:
-    // camera Attributes
-    glm::vec3 Position;
-    glm::vec3 Front;
-    glm::vec3 Up;
-    glm::vec3 Right;
-    glm::vec3 WorldUp;
-    // euler Angles
-    float Yaw;
-    float Pitch;
-    // camera options
-    float MovementSpeed;
-    float MouseSensitivity;
-    float Zoom;
+    const float PI = 3.1415926;
+    const float AngleVel_XZ = 0.01;
+    const float AngleVel_Y = 0.01;
+    const float Vel_XZ = 1.0;
+    const float Margin = 10;
+public:
+	int WindowWidth,WindowHeight;
+	vec3 CameraPos;
+	vec3 Direction;
+	vec3 DirectionXZ;
+	vec3 HorizonXZ;
+	vec3 Horizon;
+	vec3 Up;
+	int MousePos_x,MousePos_y;
+	float Angle_XZ,Angle_Y;
+	bool OnLeftEdge,OnRightEdge,OnTopEdge, OnButtonEdge;
+	float fovy, aspect, nearz, farz;
+public:
+	Camera(int WindowWidth, int WindowHeight, vec3 CameraPos, float Angle_XZ, float Angle_Y, float fovy=45, float nearz=1.0f,float farz=1000.0) :
+		WindowWidth(WindowWidth), WindowHeight(WindowHeight), CameraPos(CameraPos), Angle_XZ(Angle_XZ), Angle_Y(Angle_Y),
+		fovy(fovy),nearz(nearz), farz(farz)
+	{
+		CalculateVector();
+		MousePos_x = MousePos_y = -1;
+		aspect = float(WindowWidth) / WindowHeight;
+		glutWarpPointer(MousePos_x, MousePos_y);
+	}
+	void CalculateVector()
+	{
+		Direction=vec3(sin(Angle_Y)*cos(Angle_XZ),cos(Angle_Y),sin(Angle_Y)*sin(Angle_XZ));
+		Direction = normalize(Direction);
+		DirectionXZ=vec3(Direction.x,0.0,Direction.z);
+		HorizonXZ=cross(vec3(Direction.x,fabs(Direction.y),Direction.z),DirectionXZ);
+		Up=normalize(cross(Direction,HorizonXZ));
+		Horizon = normalize(cross(Direction, Up));
+	}
+	void SetMousePos(int MousePosX, int MousePosY)
+	{
+		MousePos_x = MousePosX;
+		MousePos_y = MousePosY;
+	}
+	void OnMouseMove(int x,int y)
+	{
+		if (MousePos_x == -1) return;
+		int delta_x=x-MousePos_x;
+		int delta_y=y-MousePos_y;
+		MousePos_x=x;MousePos_y=y;
+		Angle_XZ=Angle_XZ+delta_x*AngleVel_XZ;
 
-    // constructor with vectors
-    Camera(glm::vec3 position = glm::vec3(0.0f, 0.0f, 0.0f), glm::vec3 up = glm::vec3(0.0f, 1.0f, 0.0f), float yaw = YAW, float pitch = PITCH) : Front(glm::vec3(0.0f, 0.0f, -1.0f)), MovementSpeed(SPEED), MouseSensitivity(SENSITIVITY), Zoom(ZOOM)
-    {
-        Position = position;
-        WorldUp = up;
-        Yaw = yaw;
-        Pitch = pitch;
-        updateCameraVectors();
-    }
-    // constructor with scalar values
-    Camera(float posX, float posY, float posZ, float upX, float upY, float upZ, float yaw, float pitch) : Front(glm::vec3(0.0f, 0.0f, -1.0f)), MovementSpeed(SPEED), MouseSensitivity(SENSITIVITY), Zoom(ZOOM)
-    {
-        Position = glm::vec3(posX, posY, posZ);
-        WorldUp = glm::vec3(upX, upY, upZ);
-        Yaw = yaw;
-        Pitch = pitch;
-        updateCameraVectors();
-    }
+		float Angle_Y_Next=Angle_Y+delta_y*AngleVel_Y;
+		if (Angle_Y_Next>=0 && Angle_Y_Next<=PI)
+			Angle_Y=Angle_Y_Next;
 
-    // returns the view matrix calculated using Euler Angles and the LookAt Matrix
-    glm::mat4 GetViewMatrix()
-    {
-        return glm::lookAt(Position, Position + Front, Up);
-    }
+		OnLeftEdge=false;
+		OnRightEdge=false;
+		OnTopEdge=false;
+		OnButtonEdge=false;
+		if (delta_x==0)
+		{
+			if (x<Margin)
+				OnLeftEdge=true;
+			else if (x>WindowWidth-Margin)
+				OnRightEdge=true;
+		}
+		if (delta_y==0)
+		{
+			if (y<Margin)
+				OnTopEdge=true;
+			else if (y>WindowHeight-Margin)
+				OnButtonEdge=true;
+		}
 
-    // processes input received from any keyboard-like input system. Accepts input parameter in the form of camera defined ENUM (to abstract it from windowing systems)
-    void ProcessKeyboard(Camera_Movement direction, float deltaTime)
-    {
-        float velocity = MovementSpeed * deltaTime;
-        if (direction == FORWARD)
-            Position += Front * velocity;
-        if (direction == BACKWARD)
-            Position -= Front * velocity;
-        if (direction == LEFT)
-            Position -= Right * velocity;
-        if (direction == RIGHT)
-            Position += Right * velocity;
-    }
+		CalculateVector();
+	}
+	void OnMoveEdge()
+	{
+		bool Moved=false;
+		if (OnLeftEdge)
+		{
+			Angle_XZ-=AngleVel_XZ;
+			Moved=true;
+		}
+		else if (OnRightEdge)
+		{
+			Angle_XZ+=AngleVel_XZ;
+			Moved=true;
+		}
+		else if (OnTopEdge)
+		{
+			if (Angle_Y-AngleVel_Y>=0)
+				Angle_Y-=AngleVel_Y;
+			Moved=true;
+		}
+		else if (OnButtonEdge)
+		{
+			if (Angle_Y+AngleVel_Y<=PI)
+				Angle_Y+=AngleVel_Y;
+			Moved=true;
+		}
+		if (Moved)
+			CalculateVector();
+	}
+	void Move(int step)
+	{
+		CameraPos += step*Vel_XZ*glm::normalize(Direction);
+	}
+	void MoveXZ(int step)
+	{
+		CameraPos+=step*Vel_XZ*glm::normalize(DirectionXZ);
+	}
+	void MoveXZ_LR(int step)
+	{
+		CameraPos+=step*Vel_XZ*glm::normalize(HorizonXZ);
+	}
+	~Camera()
+	{
+	}
 
-    // processes input received from a mouse input system. Expects the offset value in both the x and y direction.
-    void ProcessMouseMovement(float xoffset, float yoffset, GLboolean constrainPitch = true)
-    {
-        xoffset *= MouseSensitivity;
-        yoffset *= MouseSensitivity;
-
-        Yaw   += xoffset;
-        Pitch += yoffset;
-
-        // make sure that when pitch is out of bounds, screen doesn't get flipped
-        if (constrainPitch)
-        {
-            if (Pitch > 89.0f)
-                Pitch = 89.0f;
-            if (Pitch < -89.0f)
-                Pitch = -89.0f;
-        }
-
-        // update Front, Right and Up Vectors using the updated Euler angles
-        updateCameraVectors();
-    }
-
-    // processes input received from a mouse scroll-wheel event. Only requires input on the vertical wheel-axis
-    void ProcessMouseScroll(float yoffset)
-    {
-        Zoom -= (float)yoffset;
-        if (Zoom < 1.0f)
-            Zoom = 1.0f;
-        if (Zoom > 45.0f)
-            Zoom = 45.0f;
-    }
-
-private:
-    // calculates the front vector from the Camera's (updated) Euler Angles
-    void updateCameraVectors()
-    {
-        // calculate the new Front vector
-        glm::vec3 front;
-        front.x = cos(glm::radians(Yaw)) * cos(glm::radians(Pitch));
-        front.y = sin(glm::radians(Pitch));
-        front.z = sin(glm::radians(Yaw)) * cos(glm::radians(Pitch));
-        Front = glm::normalize(front);
-        // also re-calculate the Right and Up vector
-        Right = glm::normalize(glm::cross(Front, WorldUp));  // normalize the vectors, because their length gets closer to 0 the more you look up or down which results in slower movement.
-        Up    = glm::normalize(glm::cross(Right, Front));
-    }
+	mat4 GetViewMatrix()
+	{
+		return lookAt(CameraPos, CameraPos + Direction, Up);
+	}
+	mat4 GetPerspectiveMatrix()
+	{
+		return perspective(fovy, aspect, nearz, farz);
+	}
+	vec3 GetCameraPos()
+	{
+		return CameraPos;
+	}
+	float GetScreenArea()
+	{
+		float height = nearz*tan(fovy / 2.0)*2.0;
+		float width = height*aspect;
+		return width*height;
+	}
+	void print()
+	{
+		cout << "camera pos=(" << CameraPos.x << "," << CameraPos.y << "," << CameraPos.z << ")"<< endl;
+		cout << "camera dir=(" << Direction.x << "," << Direction.y << "," << Direction.z << ")" << endl;
+		cout << "camera horiz=(" << Horizon.x << "," << Horizon.y << "," << Horizon.z << ")" << endl;
+		cout << "camera up=(" << Up.x << "," << Up.y << "," << Up.z << ")" << endl;
+	}
 };
+
 #endif

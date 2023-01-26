@@ -17,5 +17,5 @@ fi
 
 # If it doesn't work for you, try adding any of the libraries below.
 #g++ $1 -lGL -lm -lX11 -lpthread -lXrandr -lXi -ldl -lglfw
-g++ $1 ./libs/glad/glad.c -ldl -lglfw -o ./output.out
-./output.out
+g++ --std=c++17 $1 -lassimp -ldl -I./libs -lGL -lGLEW -lGLU -lglut -I./include -lfreeimage -o ./output.out
+#./output.out
